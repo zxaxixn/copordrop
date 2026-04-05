@@ -5,6 +5,7 @@ const path      = require('path');
 const crypto    = require('crypto');
 const cron      = require('node-cron');
 const puppeteer = require('puppeteer-core');
+const chromium  = require('@sparticuz/chromium');
 const { trackAllPrices }                   = require('./gemini-tracker');
 const { scrapeGoogleSearch, scrapeDubizzle } = require('./scrapers');
 const { readDB, writeDB, initMongo }         = require('./db');
@@ -281,12 +282,10 @@ async function scrapePcppLive(partSlug) {
     let browser;
     try {
         browser = await puppeteer.launch({
-            headless: 'new',
-            args: [
-                '--no-sandbox', '--disable-setuid-sandbox',
-                '--disable-blink-features=AutomationControlled',
-                '--disable-dev-shm-usage', '--disable-gpu'
-            ]
+            args: [...chromium.args, '--disable-blink-features=AutomationControlled'],
+            defaultViewport: chromium.defaultViewport,
+            executablePath: await chromium.executablePath(),
+            headless: chromium.headless,
         });
         const page = await browser.newPage();
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');

@@ -3,19 +3,17 @@
  * • scrapeGoogleSearch(query)  — replaces SerpAPI for cop/drop web search
  * • scrapeDubizzle(query)      — returns used UAE listings from Dubizzle
  */
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
+const chromium  = require('@sparticuz/chromium');
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function launchBrowser() {
     return puppeteer.launch({
-        headless: 'new',
-        args: [
-            '--no-sandbox', '--disable-setuid-sandbox',
-            '--disable-blink-features=AutomationControlled',
-            '--disable-dev-shm-usage', '--disable-gpu',
-            '--window-size=1366,768'
-        ]
+        args: [...chromium.args, '--disable-blink-features=AutomationControlled', '--window-size=1366,768'],
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
     });
 }
 
