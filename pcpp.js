@@ -155,7 +155,12 @@ async function getPcppReference(productName, category) {
             if (score > bestScore) { bestScore = score; best = p; }
         }
 
-        if (!best || bestScore < 2) return null;
+        // Require at least one exact model number match (e.g. "5090", "9070")
+        // This prevents low-quality fuzzy matches when the product isn't in PCPP's data
+        const modelTokens = tokens.filter(t => /^\d{3,}/.test(t));
+        const hasModelMatch = modelTokens.length === 0 ||
+            modelTokens.some(t => best?.name.toLowerCase().includes(t));
+        if (!best || bestScore < 3 || !hasModelMatch) return null;
         const aedEquiv = Math.round(best.price * USD_TO_AED * UAE_MARGIN);
         return { label: best.name, usdPrice: best.price, aedEquiv };
     } catch {

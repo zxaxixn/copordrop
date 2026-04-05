@@ -69,7 +69,10 @@ async function trackAllPrices() {
                 const lastKnown = db.priceHistory[product.id].slice(-1)[0];
                 if (lastKnown && lastKnown.price > 0) {
                     const change = Math.abs(result.price - lastKnown.price) / lastKnown.price;
-                    if (change > 0.40) {
+                    // PCPartPicker is a trusted source — allow up to 80% swing
+                    // UAE scrapers (Noon etc.) allow 40%
+                    const threshold = result.source.includes('PCPartPicker') ? 0.80 : 0.40;
+                    if (change > threshold) {
                         throw new Error(
                             `Sanity check failed — AED ${result.price.toLocaleString()} is ` +
                             `${Math.round(change * 100)}% away from last known AED ${lastKnown.price.toLocaleString()}`
