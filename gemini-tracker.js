@@ -1,6 +1,7 @@
 require('dotenv').config();
 const puppeteer        = require('puppeteer-core');
 const chromium         = require('@sparticuz/chromium');
+const { getPcppPrice } = require('./pcpp');
 const { readDB, writeDB } = require('./db');
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -143,13 +144,18 @@ async function trackAllPrices() {
         for (const product of db.products) {
             process.stdout.write(`  → ${product.name} … `);
             try {
-                // Try Amazon.ae first, fall back to Noon
+                // Try PCPartPicker first, then Amazon.ae, then Noon
                 let result = null;
                 try {
-                    result = await scrapeAmazonAE(browser, product.name);
+                    result = await getPcppPrice(product.name, product.category);
                 } catch (e) {
-                    console.log(`\n    Amazon failed (${e.message}), trying Noon…`);
-                    result = await scrapeNoon(browser, product.name);
+                    console.log(`\n    PCPartPicker failed (${e.message}), trying Amazon…`);
+                    try {
+                        result = await scrapeAmazonAE(browser, product.name);
+                    } catch (e2) {
+                        console.log(`\n    Amazon failed (${e2.message}), trying Noon…`);
+                        result = await scrapeNoon(browser, product.name);
+                    }
                 }
 
                 // Sanity check: reject if price swings >40% from last known price
