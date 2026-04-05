@@ -1,5 +1,6 @@
 require('dotenv').config();
-const puppeteer        = require('puppeteer');
+const puppeteer        = require('puppeteer-core');
+const chromium         = require('@sparticuz/chromium');
 const { readDB, writeDB } = require('./db');
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -132,16 +133,10 @@ async function trackAllPrices() {
     console.log(`[${new Date().toISOString()}] Price tracker — ${db.products.length} products`);
 
     const browser = await puppeteer.launch({
-        headless: 'new',
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-blink-features=AutomationControlled',
-            '--disable-infobars',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--window-size=1366,768'
-        ]
+        args: [...chromium.args, '--disable-blink-features=AutomationControlled', '--disable-infobars', '--window-size=1366,768'],
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
     });
 
     try {
