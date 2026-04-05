@@ -13,7 +13,7 @@ async function getGeminiPrice(productName) {
     const prompt = `What is the current retail price of "${productName}" in the UAE in AED? Search the web and return ONLY a single number with no text, no currency symbol, no explanation. Example: 3250`;
 
     const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
         {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
