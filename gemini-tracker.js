@@ -5,6 +5,8 @@ const { getPcppPrice } = require('./pcpp');
 const { readDB, writeDB } = require('./db');
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+let isTracking = false;
+
 // Generate weekly price history from Jan 5 2026 to yesterday using current price as baseline
 function backfillHistory(price) {
     const history = [];
@@ -42,7 +44,7 @@ async function scrapeAmazonAE(browser, productName) {
     const page = await newStealthPage(browser);
     try {
         const url = `https://www.amazon.ae/s?k=${encodeURIComponent(productName)}&i=electronics`;
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
         await sleep(2000);
 
         // Check for CAPTCHA
@@ -92,7 +94,7 @@ async function scrapeNoon(browser, productName) {
     const page = await newStealthPage(browser);
     try {
         const url = `https://www.noon.com/uae-en/search/?q=${encodeURIComponent(productName)}`;
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
         await sleep(3000);
 
         const prices = await page.evaluate(() => {
@@ -125,7 +127,22 @@ async function scrapeNoon(browser, productName) {
     }
 }
 
+async function launchBrowser() {
+    return puppeteer.launch({
+        args: [...chromium.args, '--disable-blink-features=AutomationControlled', '--disable-infobars', '--window-size=1366,768'],
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
+    });
+}
+
 async function trackAllPrices() {
+    if (isTracking) {
+        console.log('[Tracker] Already running, skipping.');
+        return { updated: 0, total: 0, errors: [], skipped: true };
+    }
+    isTracking = true;
+
     const db    = readDB();
     const today = new Date().toISOString().slice(0, 10);
     let updated = 0;
@@ -133,12 +150,7 @@ async function trackAllPrices() {
 
     console.log(`[${new Date().toISOString()}] Price tracker — ${db.products.length} products`);
 
-    const browser = await puppeteer.launch({
-        args: [...chromium.args, '--disable-blink-features=AutomationControlled', '--disable-infobars', '--window-size=1366,768'],
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath(),
-        headless: chromium.headless,
-    });
+    let browser = await launchBrowser();
 
     try {
         for (const product of db.products) {
@@ -150,10 +162,19 @@ async function trackAllPrices() {
                     result = await getPcppPrice(product.name, product.category);
                 } catch (e) {
                     console.log(`\n    PCPartPicker failed (${e.message}), trying Amazon…`);
+                    // Relaunch browser if it crashed
+                    if (!browser.isConnected()) {
+                        console.log('    [Browser crashed, relaunching…]');
+                        browser = await launchBrowser();
+                    }
                     try {
                         result = await scrapeAmazonAE(browser, product.name);
                     } catch (e2) {
                         console.log(`\n    Amazon failed (${e2.message}), trying Noon…`);
+                        if (!browser.isConnected()) {
+                            console.log('    [Browser crashed, relaunching…]');
+                            browser = await launchBrowser();
+                        }
                         result = await scrapeNoon(browser, product.name);
                     }
                 }
@@ -202,7 +223,8 @@ async function trackAllPrices() {
             await sleep(3000);
         }
     } finally {
-        await browser.close();
+        try { await browser.close(); } catch {}
+        isTracking = false;
     }
 
     writeDB(db);
