@@ -80,10 +80,17 @@ async function fetchPcppParts(partSlug) {
     try {
         const res = await fetch(`${PCPP_GITHUB_BASE}/us/${partSlug}`);
         if (res.ok) {
-            const html  = await res.text();
-            const match = html.match(/\[[\s\S]*\]/);
-            if (match) {
-                const raw   = JSON.parse(match[0]);
+            const contentType = res.headers.get('content-type') || '';
+            let raw;
+            if (contentType.includes('application/json')) {
+                raw = await res.json();
+            } else {
+                const text  = await res.text();
+                const match = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+                if (!match) throw new Error('No JSON array found');
+                raw = JSON.parse(match[0]);
+            }
+            if (Array.isArray(raw)) {
                 const parts = raw
                     .filter(p => p.price)
                     .map(p => ({
@@ -97,13 +104,19 @@ async function fetchPcppParts(partSlug) {
                 }
             }
         }
-    } catch {}
+    } catch (e) {
+        console.log(`[PCPP] GitHub Pages failed for '${partSlug}': ${e.message}`);
+    }
 
     // Fallback: live Puppeteer scrape
-    console.log(`[PCPP] GitHub Pages failed for '${partSlug}', scraping live…`);
-    const parts = await scrapePcppLive(partSlug);
-    pcppCache[partSlug] = { parts, fetchedAt: Date.now() };
-    return parts;
+    console.log(`[PCPP] Trying live scrape for '${partSlug}'…`);
+    try {
+        const parts = await scrapePcppLive(partSlug);
+        pcppCache[partSlug] = { parts, fetchedAt: Date.now() };
+        return parts;
+    } catch (e) {
+        throw new Error(`PCPartPicker unavailable for '${partSlug}': ${e.message}`);
+    }
 }
 
 // Find closest match and return USD price + AED equivalent

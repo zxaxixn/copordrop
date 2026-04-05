@@ -277,13 +277,9 @@ app.get('/admin', (req, res) => {
 });
 
 // ── Admin: manual price tracking trigger ─────────────────
-app.post('/api/admin/track-prices', authRequired, async (req, res) => {
-    try {
-        const result = await trackAllPrices();
-        res.json({ ok: true, ...result });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+app.post('/api/admin/track-prices', authRequired, (req, res) => {
+    res.json({ ok: true, message: 'Price tracking started in background' });
+    trackAllPrices().catch(console.error);
 });
 
 // ── Daily Gemini price tracker — 6:00 AM UAE time (02:00 UTC) ──
