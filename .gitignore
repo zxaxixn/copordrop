@@ -1,0 +1,11 @@
+# Secrets — never push
+.env
+
+# Dependencies — reinstalled via npm install
+node_modules/
+
+# Local database — lives in MongoDB on production
+db.json
+
+# Claude Code internal files
+.claude/

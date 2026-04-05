@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CopOrDrop Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg:       #0f0f0f;
+            --surface:  #161616;
+            --card:     #1c1c1c;
+            --border:   #2a2a2a;
+            --accent:   #00ff88;
+            --accent-dim: rgba(0,255,136,0.12);
+            --text:     #ffffff;
+            --subtext:  #888888;
+            --red:      #ff4444;
+            --red-dim:  rgba(255,68,68,0.12);
+            --orange:   #ff9500;
+            --radius:   12px;
+            --radius-sm: 7px;
+        }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; }
+
+        /* ── Login ── */
+        #loginScreen {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; padding: 24px;
+        }
+        .login-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 20px; padding: 40px; width: 100%; max-width: 400px;
+        }
+        .login-card h1 { font-size: 1.5rem; margin-bottom: 6px; letter-spacing: -0.3px; }
+        .login-card h1 span { color: var(--accent); }
+        .login-card p { color: var(--subtext); font-size: 0.88rem; margin-bottom: 28px; }
+        .field { margin-bottom: 16px; }
+        .field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--subtext); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.8px; }
+        .field input, .field select {
+            width: 100%; background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 11px 14px; color: var(--text);
+            font-family: 'Inter', sans-serif; font-size: 0.93rem; outline: none;
+            transition: border-color 0.2s;
+        }
+        .field input:focus, .field select:focus { border-color: rgba(0,255,136,0.5); }
+        .btn-primary {
+            width: 100%; background: var(--accent); color: #000;
+            font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.95rem;
+            padding: 12px; border: none; border-radius: var(--radius); cursor: pointer;
+            transition: opacity 0.18s;
+        }
+        .btn-primary:hover { opacity: 0.88; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .error-msg { color: var(--red); font-size: 0.83rem; margin-top: 10px; text-align: center; min-height: 20px; }
+
+        /* ── App shell ── */
+        #appScreen { display: none; }
+        .topbar {
+            height: 60px; background: var(--surface); border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 28px; position: sticky; top: 0; z-index: 10;
+        }
+        .topbar-logo { font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 1.1rem; }
+        .topbar-logo span { color: var(--accent); }
+        .topbar-right { display: flex; align-items: center; gap: 12px; }
+        .logout-btn {
+            background: none; border: 1px solid var(--border); color: var(--subtext);
+            font-family: 'Space Grotesk', sans-serif; font-size: 0.82rem; font-weight: 600;
+            padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer;
+            transition: border-color 0.18s, color 0.18s;
+        }
+        .logout-btn:hover { border-color: var(--red); color: var(--red); }
+        .container { max-width: 1000px; margin: 0 auto; padding: 32px 24px; }
+
+        /* ── Add product form ── */
+        .add-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 24px; margin-bottom: 32px;
+        }
+        .add-card h2 { font-size: 1.1rem; margin-bottom: 18px; letter-spacing: -0.2px; }
+        .form-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
+        @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+        .btn-add {
+            background: var(--accent); color: #000;
+            font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.88rem;
+            padding: 11px 20px; border: none; border-radius: var(--radius-sm); cursor: pointer;
+            transition: opacity 0.18s; white-space: nowrap;
+        }
+        .btn-add:hover { opacity: 0.88; }
+        .btn-add:disabled { opacity: 0.5; cursor: not-allowed; }
+        .form-msg { font-size: 0.82rem; margin-top: 10px; min-height: 18px; }
+        .form-msg.ok  { color: var(--accent); }
+        .form-msg.err { color: var(--red); }
+
+        /* ── Products table ── */
+        .section-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .section-header h2 { font-size: 1.05rem; }
+        .count-badge {
+            background: var(--accent-dim); color: var(--accent);
+            font-family: 'Space Grotesk', sans-serif; font-size: 0.75rem; font-weight: 700;
+            padding: 3px 10px; border-radius: 100px;
+        }
+        .table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+        thead { background: var(--surface); }
+        th {
+            font-family: 'Space Grotesk', sans-serif; font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.2px; color: var(--subtext);
+            padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        td { padding: 13px 16px; border-bottom: 1px solid rgba(42,42,42,0.6); vertical-align: middle; }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover td { background: rgba(255,255,255,0.02); }
+        .cat-pill {
+            font-family: 'Space Grotesk', sans-serif; font-size: 0.71rem; font-weight: 700;
+            padding: 2px 9px; border-radius: 5px; background: var(--accent-dim); color: var(--accent);
+        }
+        .price-val { font-family: 'Space Grotesk', sans-serif; font-weight: 700; color: var(--accent); }
+        .date-val { font-size: 0.8rem; color: var(--subtext); }
+        .action-btns { display: flex; gap: 6px; }
+        .btn-edit {
+            background: none; border: 1px solid var(--border); color: var(--subtext);
+            font-family: 'Space Grotesk', sans-serif; font-size: 0.75rem; font-weight: 600;
+            padding: 5px 11px; border-radius: var(--radius-sm); cursor: pointer;
+            transition: border-color 0.18s, color 0.18s;
+        }
+        .btn-edit:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-delete {
+            background: none; border: 1px solid var(--border); color: var(--subtext);
+            font-family: 'Space Grotesk', sans-serif; font-size: 0.75rem; font-weight: 600;
+            padding: 5px 11px; border-radius: var(--radius-sm); cursor: pointer;
+            transition: border-color 0.18s, color 0.18s;
+        }
+        .btn-delete:hover { border-color: var(--red); color: var(--red); }
+        .empty-state {
+            text-align: center; padding: 48px 20px;
+            color: var(--subtext); font-size: 0.9rem;
+        }
+        .empty-state div { font-size: 2.5rem; margin-bottom: 10px; }
+
+        /* ── Edit modal ── */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+            z-index: 100; align-items: center; justify-content: center; padding: 24px;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 28px; width: 100%; max-width: 460px;
+        }
+        .modal h3 { font-size: 1.05rem; margin-bottom: 20px; letter-spacing: -0.2px; }
+        .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-cancel {
+            flex: 1; background: var(--surface); color: var(--subtext);
+            border: 1px solid var(--border); font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600; font-size: 0.9rem; padding: 10px; border-radius: var(--radius-sm);
+            cursor: pointer; transition: border-color 0.18s;
+        }
+        .btn-cancel:hover { border-color: var(--accent); }
+        .btn-save {
+            flex: 2; background: var(--accent); color: #000;
+            font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.9rem;
+            padding: 10px; border: none; border-radius: var(--radius-sm); cursor: pointer;
+            transition: opacity 0.18s;
+        }
+        .btn-save:hover { opacity: 0.88; }
+
+        /* ── History table ── */
+        .hist-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .hist-table th {
+            font-family: 'Space Grotesk', sans-serif; font-size: 0.68rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px; color: var(--subtext);
+            padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border);
+        }
+        .hist-table td { padding: 9px 12px; border-bottom: 1px solid rgba(42,42,42,0.5); }
+        .hist-table tbody tr:last-child td { border-bottom: none; }
+        .hist-up   { color: #ff4444; font-weight: 600; }
+        .hist-down { color: var(--accent); font-weight: 600; }
+        .hist-flat { color: var(--subtext); }
+    </style>
+</head>
+<body>
+
+<!-- ── Login ── -->
+<div id="loginScreen">
+    <div class="login-card">
+        <h1>CopOrDrop<span>.ae</span></h1>
+        <p>Admin panel — sign in to manage prices</p>
+        <div class="field">
+            <label>Password</label>
+            <input type="password" id="passwordInput" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')login()">
+        </div>
+        <button class="btn-primary" id="loginBtn" onclick="login()">Sign In</button>
+        <div class="error-msg" id="loginError"></div>
+    </div>
+</div>
+
+<!-- ── App ── -->
+<div id="appScreen">
+    <div class="topbar">
+        <div class="topbar-logo">CopOrDrop<span>.ae</span> Admin</div>
+        <div class="topbar-right">
+            <a href="/" style="color:var(--subtext);font-size:0.82rem;text-decoration:none;" target="_blank">← View Site</a>
+            <button class="logout-btn" id="trackBtn" onclick="trackPrices()" style="border-color:var(--accent);color:var(--accent);">Track Prices</button>
+            <button class="logout-btn" onclick="logout()">Sign Out</button>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- Add product -->
+        <div class="add-card">
+            <h2>Add Product</h2>
+            <div class="field">
+                <label>Amazon URL</label>
+                <input type="url" id="amazonUrl" placeholder="https://www.amazon.ae/dp/...">
+            </div>
+            <div class="field">
+                <label>Product Name</label>
+                <input type="text" id="newName" placeholder="e.g. NVIDIA RTX 4070">
+            </div>
+            <div class="form-row" style="grid-template-columns: 1fr 1fr auto;">
+                <div class="field" style="margin-bottom:0;">
+                    <label>Category</label>
+                    <select id="newCategory">
+                        <option value="GPU">GPU</option>
+                        <option value="CPU">CPU</option>
+                        <option value="RAM">RAM</option>
+                        <option value="SSD">SSD</option>
+                        <option value="Monitor">Monitor</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                    <label>Price (AED)</label>
+                    <input type="number" id="newPrice" placeholder="e.g. 4500" min="0">
+                </div>
+                <button class="btn-add" id="addBtn" onclick="addProduct()">+ Add</button>
+            </div>
+            <div class="form-msg" id="addMsg"></div>
+        </div>
+
+        <!-- Product list -->
+        <div class="section-header">
+            <h2>All Products</h2>
+            <span class="count-badge" id="countBadge">0 products</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Category</th>
+                        <th>Price (AED)</th>
+                        <th>Last Checked</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="productTableBody">
+                    <tr><td colspan="5"><div class="empty-state"><div>📦</div>Loading…</div></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+<!-- ── History modal ── -->
+<div class="modal-overlay" id="historyModal">
+    <div class="modal" style="max-width:560px;">
+        <h3 id="historyTitle">Price History</h3>
+        <div id="historyContent" style="max-height:400px;overflow-y:auto;margin-top:16px;">
+            <div style="text-align:center;color:var(--subtext);padding:24px;">Loading…</div>
+        </div>
+        <div class="modal-btns" style="margin-top:16px;">
+            <button class="btn-cancel" onclick="closeHistory()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Edit modal ── -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal">
+        <h3>Edit Product</h3>
+        <input type="hidden" id="editId">
+        <div class="field">
+            <label>Product Name</label>
+            <input type="text" id="editName">
+        </div>
+        <div class="field">
+            <label>Category</label>
+            <select id="editCategory">
+                <option value="GPU">GPU</option>
+                <option value="CPU">CPU</option>
+                <option value="RAM">RAM</option>
+                <option value="SSD">SSD</option>
+                <option value="Monitor">Monitor</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+        <div class="field">
+            <label>Price (AED)</label>
+            <input type="number" id="editPrice" min="0">
+        </div>
+        <div class="field">
+            <label>Date Checked</label>
+            <input type="date" id="editDate">
+        </div>
+        <div class="modal-btns">
+            <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
+            <button class="btn-save" onclick="saveEdit()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let TOKEN = localStorage.getItem('cod_admin_token') || '';
+
+// ── Boot ─────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+    if (TOKEN) tryAutoLogin();
+});
+
+async function tryAutoLogin() {
+    // Verify stored token still works
+    const r = await fetch('/api/admin/products', { headers: { 'x-admin-token': TOKEN } });
+    if (r.ok) {
+        showApp(await r.json());
+    } else {
+        TOKEN = '';
+        localStorage.removeItem('cod_admin_token');
+    }
+}
+
+// ── Login ─────────────────────────────────────────────────
+async function login() {
+    const pw  = document.getElementById('passwordInput').value;
+    const btn = document.getElementById('loginBtn');
+    const err = document.getElementById('loginError');
+    err.textContent = '';
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+    try {
+        const r = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: pw })
+        });
+        const d = await r.json();
+        if (!r.ok) { err.textContent = d.error || 'Wrong password'; return; }
+        TOKEN = d.token;
+        localStorage.setItem('cod_admin_token', TOKEN);
+        const r2 = await fetch('/api/admin/products', { headers: { 'x-admin-token': TOKEN } });
+        showApp(await r2.json());
+    } catch (e) {
+        err.textContent = 'Connection error';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+    }
+}
+
+function logout() {
+    TOKEN = '';
+    localStorage.removeItem('cod_admin_token');
+    document.getElementById('appScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('passwordInput').value = '';
+}
+
+// ── Show app ──────────────────────────────────────────────
+function showApp(products) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = 'block';
+    _products = products;
+    renderTable(products);
+}
+
+// ── Render table ──────────────────────────────────────────
+function renderTable(products) {
+    const tbody = document.getElementById('productTableBody');
+    document.getElementById('countBadge').textContent = `${products.length} product${products.length !== 1 ? 's' : ''}`;
+
+    if (!products.length) {
+        tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div>📦</div>No products yet. Add one above.</div></td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = products.map(p => {
+        const date = p.checkedAt
+            ? new Date(p.checkedAt).toLocaleDateString('en-AE', { day: 'numeric', month: 'short', year: 'numeric' })
+            : '—';
+        const expBadge = p.experimental
+            ? '<span style="font-size:0.68rem;color:var(--orange);font-weight:700;margin-left:6px;">EXP</span>'
+            : '';
+        return `<tr>
+            <td style="font-weight:600;">${esc(p.name)}${expBadge}</td>
+            <td><span class="cat-pill">${esc(p.category)}</span></td>
+            <td class="price-val">${p.price ? Number(p.price).toLocaleString() + ' AED' : '—'}</td>
+            <td class="date-val">${date}</td>
+            <td>
+                <div class="action-btns">
+                    <button class="btn-edit" onclick="openHistory('${p.id}', '${esc(p.name)}')">History</button>
+                    <button class="btn-edit" onclick="openEdit('${p.id}')">Edit</button>
+                    <button class="btn-delete" onclick="deleteProduct('${p.id}', '${esc(p.name)}')">Delete</button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+
+// ── Add product ───────────────────────────────────────────
+async function addProduct() {
+    const name     = document.getElementById('newName').value.trim();
+    const category = document.getElementById('newCategory').value;
+    const price    = document.getElementById('newPrice').value;
+    const btn      = document.getElementById('addBtn');
+
+    if (!name) { showMsg('addMsg', 'Product name is required.', 'err'); return; }
+    if (!price || Number(price) < 0) { showMsg('addMsg', 'Enter a valid price.', 'err'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Adding…';
+    try {
+        const r = await fetch('/api/admin/products', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', 'x-admin-token': TOKEN },
+            body:    JSON.stringify({ name, category, price: Number(price), checkedAt: new Date().toISOString() })
+        });
+        const d = await r.json();
+        if (!r.ok) { showMsg('addMsg', d.error, 'err'); return; }
+
+        // Log to price history
+        await fetch(`/api/products/${d.id}/history`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', 'x-admin-token': TOKEN },
+            body:    JSON.stringify({ price: Number(price), date: new Date().toISOString().slice(0, 10) })
+        });
+
+        document.getElementById('amazonUrl').value = '';
+        document.getElementById('newName').value   = '';
+        document.getElementById('newPrice').value  = '';
+        showMsg('addMsg', `"${d.name}" added at AED ${Number(d.price).toLocaleString()}.`, 'ok');
+        await reloadTable();
+    } catch (e) {
+        showMsg('addMsg', 'Error: ' + e.message, 'err');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '+ Add';
+    }
+}
+
+// ── Delete ────────────────────────────────────────────────
+async function deleteProduct(id, name) {
+    if (!confirm(`Delete "${name}"?`)) return;
+    try {
+        const r = await fetch(`/api/admin/products/${id}`, {
+            method:  'DELETE',
+            headers: { 'x-admin-token': TOKEN }
+        });
+        if (!r.ok) { alert('Delete failed'); return; }
+        await reloadTable();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+// ── Edit modal ────────────────────────────────────────────
+let _products = [];
+
+async function reloadTable() {
+    const r = await fetch('/api/admin/products', { headers: { 'x-admin-token': TOKEN } });
+    _products = await r.json();
+    renderTable(_products);
+}
+
+function openEdit(id) {
+    const p = _products.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('editId').value       = p.id;
+    document.getElementById('editName').value     = p.name;
+    document.getElementById('editCategory').value = p.category;
+    document.getElementById('editPrice').value    = p.price;
+    document.getElementById('editDate').value     = p.checkedAt
+        ? new Date(p.checkedAt).toISOString().slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+    document.getElementById('editModal').classList.add('open');
+}
+
+function closeEdit() {
+    document.getElementById('editModal').classList.remove('open');
+}
+
+async function saveEdit() {
+    const id       = document.getElementById('editId').value;
+    const name     = document.getElementById('editName').value.trim();
+    const category = document.getElementById('editCategory').value;
+    const price    = document.getElementById('editPrice').value;
+    const date     = document.getElementById('editDate').value;
+    if (!name || !price) { alert('Name and price are required.'); return; }
+
+    try {
+        const r = await fetch(`/api/admin/products/${id}`, {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json', 'x-admin-token': TOKEN },
+            body:    JSON.stringify({
+                name, category, price: Number(price),
+                checkedAt: date ? new Date(date).toISOString() : new Date().toISOString()
+            })
+        });
+        if (!r.ok) { alert('Save failed'); return; }
+
+        // Log to price history
+        await fetch(`/api/products/${id}/history`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', 'x-admin-token': TOKEN },
+            body:    JSON.stringify({ price: Number(price), date: date || new Date().toISOString().slice(0, 10) })
+        });
+
+        closeEdit();
+        await reloadTable();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+// ── Helpers ───────────────────────────────────────────────
+function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'form-msg ' + type;
+    setTimeout(() => { el.textContent = ''; el.className = 'form-msg'; }, 4000);
+}
+function esc(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modals on backdrop click
+document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeEdit();
+});
+document.getElementById('historyModal').addEventListener('click', function(e) {
+    if (e.target === this) closeHistory();
+});
+
+// ── Price History modal ───────────────────────────────────
+async function openHistory(id, name) {
+    document.getElementById('historyTitle').textContent = name + ' — Price History';
+    document.getElementById('historyContent').innerHTML =
+        '<div style="text-align:center;color:var(--subtext);padding:24px;">Loading…</div>';
+    document.getElementById('historyModal').classList.add('open');
+
+    try {
+        const r = await fetch(`/api/products/${id}/history`);
+        const history = await r.json();
+
+        if (!history.length) {
+            document.getElementById('historyContent').innerHTML =
+                '<div style="text-align:center;color:var(--subtext);padding:24px;">No history yet.</div>';
+            return;
+        }
+
+        // Sort newest first for display
+        const sorted = [...history].sort((a, b) => b.date.localeCompare(a.date));
+
+        const rows = sorted.map((entry, i) => {
+            const prev   = sorted[i + 1];
+            let changeHtml = '<span class="hist-flat">—</span>';
+            if (prev) {
+                const diff = entry.price - prev.price;
+                const pct  = ((diff / prev.price) * 100).toFixed(1);
+                if (diff > 0)      changeHtml = `<span class="hist-up">▲ ${Math.abs(pct)}%</span>`;
+                else if (diff < 0) changeHtml = `<span class="hist-down">▼ ${Math.abs(pct)}%</span>`;
+                else               changeHtml = `<span class="hist-flat">—</span>`;
+            }
+            return `<tr>
+                <td>${entry.date}</td>
+                <td style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--accent);">
+                    ${Number(entry.price).toLocaleString()} AED
+                </td>
+                <td>${changeHtml}</td>
+            </tr>`;
+        }).join('');
+
+        document.getElementById('historyContent').innerHTML = `
+            <table class="hist-table">
+                <thead><tr><th>Date</th><th>Price</th><th>Change</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>`;
+    } catch (e) {
+        document.getElementById('historyContent').innerHTML =
+            `<div style="text-align:center;color:var(--red);padding:24px;">Error: ${e.message}</div>`;
+    }
+}
+
+function closeHistory() {
+    document.getElementById('historyModal').classList.remove('open');
+}
+
+// ── Track Prices via Gemini ───────────────────────────────
+async function trackPrices() {
+    const btn = document.getElementById('trackBtn');
+    btn.disabled = true;
+    btn.textContent = 'Tracking…';
+    try {
+        const r = await fetch('/api/admin/track-prices', {
+            method:  'POST',
+            headers: { 'x-admin-token': TOKEN }
+        });
+        const d = await r.json();
+        if (!r.ok) { alert('Error: ' + (d.error || 'Unknown error')); return; }
+        alert(`✅ Done! Updated ${d.updated}/${d.total} products.${d.errors?.length ? '\n\nFailed:\n' + d.errors.map(e => `• ${e.product}: ${e.error}`).join('\n') : ''}`);
+        await reloadTable();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Track Prices';
+    }
+}
+</script>
+</body>
+</html>

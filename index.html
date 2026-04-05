@@ -1,0 +1,2250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CopOrDrop.ae — UAE's PC Deal Checker</title>
+    <meta name="description" content="Should you cop or drop that PC deal? Paste any UAE listing and get an instant AI verdict. Built for Dubai, Sharjah, and the whole UAE.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg:           #0f0f0f;
+            --surface:      #161616;
+            --card:         #1c1c1c;
+            --card-hover:   #222222;
+            --border:       #2a2a2a;
+            --accent:       #00ff88;
+            --accent-dim:   rgba(0, 255, 136, 0.12);
+            --accent-glow:  rgba(0, 255, 136, 0.35);
+            --text:         #ffffff;
+            --subtext:      #888888;
+            --subtext-lt:   #666666;
+            --red:          #ff4444;
+            --red-dim:      rgba(255, 68, 68, 0.12);
+            --orange:       #ff9500;
+            --orange-dim:   rgba(255, 149, 0, 0.12);
+            --heading:      'Space Grotesk', sans-serif;
+            --body:         'Inter', sans-serif;
+            --radius:       14px;
+            --radius-sm:    8px;
+            --radius-lg:    20px;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: var(--body);
+            line-height: 1.6;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ──────────────── SCROLLBAR ──────────────── */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+        /* ──────────────── NAVBAR ──────────────── */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            background: rgba(15, 15, 15, 0.88);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-logo {
+            font-family: var(--heading);
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: var(--text);
+            text-decoration: none;
+            cursor: pointer;
+            letter-spacing: -0.3px;
+        }
+        .nav-logo span { color: var(--accent); }
+
+        .nav-links {
+            display: flex;
+            gap: 4px;
+            list-style: none;
+            align-items: center;
+        }
+
+        .nav-links a {
+            font-family: var(--body);
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--subtext);
+            text-decoration: none;
+            padding: 7px 15px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: color 0.18s, background 0.18s;
+        }
+        .nav-links a:hover { color: var(--text); background: var(--card); }
+        .nav-links a.active { color: var(--accent); background: var(--accent-dim); }
+
+        .nav-toggle {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            padding: 6px 4px;
+            background: none;
+            border: none;
+        }
+        .nav-toggle span {
+            display: block;
+            width: 22px;
+            height: 2px;
+            background: var(--text);
+            border-radius: 2px;
+            transition: all 0.25s;
+        }
+
+        /* ──────────────── PAGE SYSTEM ──────────────── */
+        .page { display: none; min-height: calc(100vh - 64px - 1px); }
+        .page.active { display: block; }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+        /* ──────────────── AD SLOTS ──────────────── */
+        .ad-slot {
+            background: var(--surface);
+            border: 1px dashed #2e2e2e;
+            border-radius: var(--radius-sm);
+            padding: 14px 20px;
+            text-align: center;
+            color: var(--subtext-lt);
+            font-size: 0.78rem;
+            font-style: italic;
+            margin: 20px 0;
+            letter-spacing: 0.3px;
+        }
+
+        /* ──────────────── SECTION HELPERS ──────────────── */
+        .section { padding: 56px 0; }
+        .section-label {
+            font-family: var(--heading);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+        .section-title {
+            font-family: var(--heading);
+            font-size: clamp(1.6rem, 3vw, 2.4rem);
+            font-weight: 700;
+            line-height: 1.15;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        .section-sub {
+            color: var(--subtext);
+            font-size: 0.94rem;
+            margin-bottom: 32px;
+            max-width: 560px;
+        }
+
+        /* ──────────────── HOMEPAGE — HERO ──────────────── */
+        .hero {
+            padding: 80px 24px 56px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -40%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 700px;
+            height: 500px;
+            background: radial-gradient(ellipse, rgba(0,255,136,0.07) 0%, transparent 68%);
+            pointer-events: none;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--accent-dim);
+            border: 1px solid rgba(0,255,136,0.25);
+            color: var(--accent);
+            font-family: var(--heading);
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 5px 14px;
+            border-radius: 100px;
+            margin-bottom: 28px;
+            letter-spacing: 0.5px;
+        }
+        .hero-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulseDot 2s ease-in-out infinite;
+        }
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.4; transform: scale(0.7); }
+        }
+
+        .hero h1 {
+            font-family: var(--heading);
+            font-size: clamp(2.6rem, 7vw, 5.2rem);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -2px;
+            margin-bottom: 22px;
+        }
+        .hero h1 .green {
+            color: var(--accent);
+            text-shadow: 0 0 50px rgba(0,255,136,0.35);
+        }
+        .hero h1 .red { color: var(--red); }
+
+        .hero-tagline {
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            color: var(--subtext);
+            max-width: 480px;
+            margin: 0 auto 40px;
+        }
+
+        .hero-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent);
+            color: #000;
+            font-family: var(--heading);
+            font-weight: 700;
+            font-size: 1rem;
+            padding: 13px 26px;
+            border-radius: var(--radius);
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            transition: transform 0.18s, box-shadow 0.18s;
+            letter-spacing: -0.2px;
+        }
+        .hero-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 35px rgba(0,255,136,0.4);
+        }
+
+        /* ──────────────── DEAL CHECKER CARD ──────────────── */
+        .checker-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            position: relative;
+            overflow: hidden;
+        }
+        .checker-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%);
+            opacity: 0.6;
+        }
+
+        .deal-textarea {
+            width: 100%;
+            min-height: 130px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            color: var(--text);
+            font-family: var(--body);
+            font-size: 0.93rem;
+            line-height: 1.6;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .deal-textarea::placeholder { color: var(--subtext-lt); }
+        .deal-textarea:focus {
+            border-color: rgba(0,255,136,0.5);
+            box-shadow: 0 0 0 3px rgba(0,255,136,0.08);
+        }
+
+        .check-btn {
+            width: 100%;
+            margin-top: 14px;
+            padding: 15px;
+            background: var(--accent);
+            color: #000;
+            font-family: var(--heading);
+            font-weight: 700;
+            font-size: 1rem;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.18s, box-shadow 0.18s, opacity 0.18s;
+            letter-spacing: -0.2px;
+        }
+        .check-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 35px rgba(0,255,136,0.4);
+        }
+        .check-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+        .spinner {
+            display: inline-block;
+            width: 17px;
+            height: 17px;
+            border: 2px solid rgba(0,0,0,0.25);
+            border-top-color: #000;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ──────────────── VERDICT CARD ──────────────── */
+        .verdict-card {
+            margin-top: 20px;
+            border-radius: var(--radius);
+            padding: 24px;
+            display: none;
+            animation: fadeUp 0.35s ease both;
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .verdict-card.cop   { display: block; background: var(--accent-dim); border: 1px solid rgba(0,255,136,0.35); }
+        .verdict-card.drop  { display: block; background: var(--red-dim);    border: 1px solid rgba(255,68,68,0.35); }
+        .verdict-card.scam  { display: block; background: var(--orange-dim); border: 1px solid rgba(255,149,0,0.35); }
+
+        .verdict-label {
+            font-family: var(--heading);
+            font-weight: 800;
+            font-size: 1.7rem;
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .verdict-card.cop  .verdict-label { color: var(--accent); }
+        .verdict-card.drop .verdict-label { color: var(--red); }
+        .verdict-card.scam .verdict-label { color: var(--orange); }
+
+        .verdict-body {
+            font-size: 0.93rem;
+            line-height: 1.75;
+            color: rgba(255,255,255,0.88);
+            white-space: pre-wrap;
+        }
+
+        .verdict-disclaimer {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            font-size: 0.76rem;
+            color: var(--subtext);
+        }
+
+        /* ──────────────── RECENT VERDICTS ──────────────── */
+        .verdicts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 16px;
+        }
+
+        .verdict-item {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 22px;
+            cursor: default;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        .verdict-item:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
+
+        .vi-badge {
+            font-family: var(--heading);
+            font-size: 0.74rem;
+            font-weight: 700;
+            padding: 3px 11px;
+            border-radius: 100px;
+            display: inline-block;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .vi-badge.cop  { background: var(--accent-dim); color: var(--accent); }
+        .vi-badge.drop { background: var(--red-dim);    color: var(--red); }
+        .vi-badge.scam { background: var(--orange-dim); color: var(--orange); }
+
+        .verdict-item h3 {
+            font-family: var(--heading);
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+        .verdict-item p { font-size: 0.84rem; color: var(--subtext); line-height: 1.55; }
+
+        .vi-prices {
+            margin-top: 14px;
+            font-family: var(--heading);
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .vi-prices .asked { color: var(--subtext-lt); text-decoration: line-through; }
+        .vi-prices .fair  { color: var(--accent); }
+        .vi-prices .arrow { color: var(--subtext-lt); }
+
+        /* ──────────────── PRICE TRACKER ──────────────── */
+        .table-wrap {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            overflow-x: auto;
+        }
+
+        .price-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+
+        .price-table thead {
+            background: var(--surface);
+        }
+        .price-table th {
+            font-family: var(--heading);
+            font-weight: 600;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--subtext);
+            padding: 14px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .price-table td {
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(42,42,42,0.6);
+            vertical-align: middle;
+        }
+        .price-table tbody tr:last-child td { border-bottom: none; }
+        .price-table tbody tr:hover td { background: var(--surface); }
+
+        .cat-row td {
+            background: #141414;
+            font-family: var(--heading);
+            font-weight: 700;
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comp-name { font-weight: 600; color: var(--text); margin-bottom: 3px; }
+        .comp-spec { font-size: 0.78rem; color: var(--subtext-lt); }
+        .price-cell {
+            font-family: var(--heading);
+            font-weight: 700;
+            color: var(--accent);
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+
+        .trend { font-weight: 600; font-size: 0.85rem; white-space: nowrap; }
+        .trend.up   { color: var(--red); }
+        .trend.down { color: var(--accent); }
+        .trend.flat { color: var(--subtext); }
+
+        .val-badge {
+            font-family: var(--heading);
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        .val-good { background: var(--accent-dim); color: var(--accent); }
+        .val-ok   { background: var(--orange-dim); color: var(--orange); }
+        .val-bad  { background: var(--red-dim);    color: var(--red); }
+
+        /* ──────────────── ABOUT ──────────────── */
+        .about-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .about-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+        }
+        .about-card + .about-card { margin-top: 20px; }
+        .about-card h2 {
+            font-family: var(--heading);
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+            letter-spacing: -0.3px;
+        }
+        .about-card p {
+            font-size: 0.92rem;
+            color: var(--subtext);
+            line-height: 1.8;
+            margin-bottom: 14px;
+        }
+        .about-card p:last-child { margin-bottom: 0; }
+        .about-card a { color: var(--accent); text-decoration: none; }
+        .about-card a:hover { text-decoration: underline; }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .stat-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-val {
+            font-family: var(--heading);
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+        }
+        .stat-lbl {
+            font-size: 0.75rem;
+            color: var(--subtext);
+            margin-top: 5px;
+            line-height: 1.3;
+        }
+
+        /* ──────────────── FOOTER ──────────────── */
+        footer {
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 52px 28px 32px;
+            margin-top: 80px;
+        }
+        .footer-inner { max-width: 1100px; margin: 0 auto; }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 1fr;
+            gap: 40px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .footer-brand-name {
+            font-family: var(--heading);
+            font-weight: 800;
+            font-size: 1.15rem;
+            margin-bottom: 10px;
+            letter-spacing: -0.3px;
+        }
+        .footer-brand-name span { color: var(--accent); }
+
+        .footer-brand-tagline {
+            font-size: 0.84rem;
+            color: var(--subtext);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .socials { display: flex; gap: 10px; }
+        .social-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--subtext);
+            text-decoration: none;
+            transition: border-color 0.2s, color 0.2s, background 0.2s;
+        }
+        .social-icon:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .footer-col h4 {
+            font-family: var(--heading);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--subtext-lt);
+            margin-bottom: 16px;
+        }
+        .footer-col ul { list-style: none; }
+        .footer-col li { margin-bottom: 10px; }
+        .footer-col a {
+            color: var(--subtext);
+            text-decoration: none;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: color 0.18s;
+        }
+        .footer-col a:hover { color: var(--text); }
+
+        .footer-bottom {
+            padding-top: 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .footer-bottom p { font-size: 0.82rem; color: var(--subtext-lt); }
+        .footer-affiliate { font-size: 0.78rem; color: #555; }
+
+        /* ──────────────── RESPONSIVE ──────────────── */
+        @media (max-width: 820px) {
+            .about-grid { grid-template-columns: 1fr; }
+            .footer-grid { grid-template-columns: 1fr 1fr; gap: 28px; }
+        }
+
+        @media (max-width: 640px) {
+            .verdicts-grid { grid-template-columns: 1fr; }
+            .footer-grid { grid-template-columns: 1fr; gap: 24px; }
+            .footer-bottom { flex-direction: column; text-align: center; }
+
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 64px;
+                left: 0;
+                right: 0;
+                background: rgba(15,15,15,0.97);
+                backdrop-filter: blur(20px);
+                border-bottom: 1px solid var(--border);
+                flex-direction: column;
+                padding: 12px 16px;
+                gap: 2px;
+            }
+            .nav-links.open { display: flex; }
+            .nav-links a { padding: 11px 14px; font-size: 0.95rem; }
+            .nav-toggle { display: flex; }
+
+            .hero { padding: 48px 20px 40px; }
+            .hero h1 { letter-spacing: -1px; }
+            .section { padding: 40px 0; }
+            .checker-card { padding: 20px; }
+        }
+
+        /* ──────────────── PRICE TRACKER CONTROLS ──────────────── */
+        .tracker-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .tracker-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .price-status {
+            font-size: 0.78rem;
+            color: var(--subtext);
+            text-align: right;
+        }
+        .price-status.loading { color: var(--accent); }
+        .price-status.error   { color: var(--red); }
+        .refresh-btn {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: var(--heading);
+            font-weight: 600;
+            font-size: 0.88rem;
+            padding: 9px 18px;
+            cursor: pointer;
+            transition: border-color 0.18s, background 0.18s, color 0.18s;
+            white-space: nowrap;
+        }
+        .refresh-btn:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+        }
+        .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        @keyframes rotate { to { transform: rotate(360deg); } }
+        .spinning { display: inline-block; animation: rotate 1s linear infinite; }
+
+        /* ──────────────── DEALS PAGE ──────────────── */
+        .deals-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .deals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        .deals-empty {
+            grid-column: 1/-1;
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--subtext);
+            font-size: 0.94rem;
+        }
+        .deal-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: border-color 0.2s, transform 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .deal-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+        }
+        .deal-card:hover { border-color: rgba(0,255,136,0.3); transform: translateY(-2px); }
+        .deal-platform {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--subtext);
+        }
+        .deal-name {
+            font-family: var(--heading);
+            font-size: 0.98rem;
+            font-weight: 700;
+            line-height: 1.3;
+            color: var(--text);
+        }
+        .deal-desc {
+            font-size: 0.82rem;
+            color: var(--subtext);
+            line-height: 1.5;
+            flex: 1;
+        }
+        .deal-pricing {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .deal-price {
+            font-family: var(--heading);
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--accent);
+        }
+        .deal-was {
+            font-size: 0.82rem;
+            color: var(--subtext-lt);
+            text-decoration: line-through;
+        }
+        .deal-saving {
+            font-size: 0.78rem;
+            font-weight: 700;
+            background: var(--accent-dim);
+            color: var(--accent);
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+        .deal-btns {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .deal-btn-primary {
+            flex: 1;
+            background: var(--accent);
+            color: #000;
+            font-family: var(--heading);
+            font-weight: 700;
+            font-size: 0.82rem;
+            padding: 9px 14px;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            transition: opacity 0.18s;
+        }
+        .deal-btn-primary:hover { opacity: 0.85; }
+        .deal-btn-secondary {
+            background: var(--surface);
+            color: var(--subtext);
+            font-family: var(--heading);
+            font-weight: 600;
+            font-size: 0.82rem;
+            padding: 9px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            transition: border-color 0.18s, color 0.18s;
+        }
+        .deal-btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* Buy column in price table */
+        .buy-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--heading);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-decoration: none;
+            padding: 4px 10px;
+            border: 1px solid rgba(0,255,136,0.3);
+            border-radius: 6px;
+            transition: background 0.18s;
+            white-space: nowrap;
+            margin-bottom: 4px;
+            display: block;
+            width: fit-content;
+        }
+        .buy-link:hover { background: var(--accent-dim); }
+        .buy-link.noon { color: var(--orange); border-color: rgba(255,149,0,0.3); }
+        .buy-link.noon:hover { background: var(--orange-dim); }
+
+        /* ──────────────── MISC ──────────────── */
+        .divider { height: 1px; background: var(--border); margin: 40px 0; }
+        .accent { color: var(--accent); }
+
+        /* Tips list */
+        .tips-list {
+            padding-left: 0;
+            list-style: none;
+        }
+        .tips-list li {
+            font-size: 0.88rem;
+            color: var(--subtext);
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(42,42,42,0.5);
+            padding-left: 18px;
+            position: relative;
+            line-height: 1.4;
+        }
+        .tips-list li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+        }
+        .tips-list li:last-child { border-bottom: none; }
+
+        /* ──────────────── CHART BUTTON ──────────────── */
+        .chart-btn {
+            display: block;
+            width: fit-content;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--subtext);
+            font-family: var(--heading);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 4px;
+            transition: border-color 0.18s, color 0.18s;
+            white-space: nowrap;
+        }
+        .chart-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* ──────────────── CHART MODAL ──────────────── */
+        .chart-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.82);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .chart-modal-overlay.open { display: flex; }
+        .chart-modal {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            width: 100%;
+            max-width: 780px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .chart-modal-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            gap: 16px;
+        }
+        .chart-modal-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+        .chart-modal-title {
+            font-family: var(--heading);
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .chart-close-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--subtext);
+            font-size: 1rem;
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: border-color 0.18s, color 0.18s;
+        }
+        .chart-close-btn:hover { border-color: var(--red); color: var(--red); }
+        .chart-canvas-wrap {
+            position: relative;
+            height: 280px;
+            margin-bottom: 20px;
+        }
+        .chart-no-data {
+            text-align: center;
+            padding: 48px 20px;
+            color: var(--subtext);
+            font-size: 0.9rem;
+            display: none;
+        }
+        .prediction-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-top: 4px;
+            display: none;
+        }
+        .prediction-loading {
+            text-align: center;
+            padding: 18px 20px;
+            color: var(--subtext);
+            font-size: 0.85rem;
+        }
+        .prediction-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .prediction-badge {
+            font-family: var(--heading);
+            font-size: 0.88rem;
+            font-weight: 800;
+            padding: 5px 14px;
+            border-radius: 100px;
+            letter-spacing: 0.3px;
+        }
+        .pred-up   { background: var(--red-dim);    color: var(--red); }
+        .pred-down { background: var(--accent-dim); color: var(--accent); }
+        .pred-flat { background: var(--orange-dim); color: var(--orange); }
+        .prediction-conf {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--subtext);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .prediction-label {
+            font-family: var(--heading);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--subtext-lt);
+            margin-bottom: 8px;
+        }
+        .prediction-summary {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.85);
+            line-height: 1.7;
+            margin-bottom: 14px;
+        }
+        .prediction-factors {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+        }
+        .pred-factor {
+            font-size: 0.74rem;
+            color: var(--subtext);
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     NAVBAR
+═══════════════════════════════════════════ -->
+<nav class="navbar">
+    <span class="nav-logo" onclick="navigate('home')">CopOrDrop<span>.ae</span></span>
+
+    <ul class="nav-links" id="navLinks">
+        <li><a id="nav-tracker" onclick="navigate('tracker')">Price Tracker</a></li>
+        <li><a id="nav-deals"   onclick="navigate('deals')">🔥 Hot Deals</a></li>
+        <li><a id="nav-checker" onclick="navigate('checker')">Deal Checker</a></li>
+        <li><a id="nav-about"   onclick="navigate('about')">About</a></li>
+    </ul>
+
+    <button class="nav-toggle" onclick="toggleMenu()" aria-label="Toggle menu" id="menuBtn">
+        <span></span><span></span><span></span>
+    </button>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     HOME PAGE
+═══════════════════════════════════════════ -->
+<div class="page active" id="page-home">
+
+    <!-- Top ad slot -->
+    <div class="container">
+        <div class="ad-slot">[ Ad slot — Google AdSense ]</div>
+    </div>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-badge">UAE's PC deal checker</div>
+        <h1>
+            Should you <span class="green">cop</span><br>
+            or <span class="red">drop</span> that deal?
+        </h1>
+        <p class="hero-tagline">Paste any UAE PC listing. Get an instant AI verdict. No cap, just specs.</p>
+        <button class="hero-cta" onclick="scrollToChecker()">Check a Deal →</button>
+    </section>
+
+    <!-- Deal Checker (inline on homepage) -->
+    <section class="section" style="padding-top: 0;" id="homeChecker">
+        <div class="container">
+            <div class="section-label">AI Deal Checker</div>
+            <h2 class="section-title">Paste your listing. Get the truth.</h2>
+            <p class="section-sub">Works with Dubizzle, WhatsApp screenshots, OpenSouk — whatever you found.</p>
+
+            <div class="checker-card">
+                <textarea
+                    class="deal-textarea"
+                    id="homeInput"
+                    aria-label="Paste your PC listing here"
+                    placeholder="Paste your listing here...
+
+e.g. 'RTX 4070 Super, 12GB GDDR6X, barely used, asking 2,500 AED on Dubizzle. Pick up JLT only. Box included but has a small mark on it.'"
+                ></textarea>
+                <button class="check-btn" id="homeBtn" onclick="runCheck('home')">
+                    <span id="homeBtnLabel">Check This Deal →</span>
+                </button>
+                <div id="homeVerdict" class="verdict-card">
+                    <div class="verdict-label" id="homeVerdictLabel"></div>
+                    <div class="verdict-body" id="homeVerdictBody"></div>
+                    <div class="verdict-disclaimer">⚠️ AI verdicts are a guide only — always verify before buying. CopOrDrop.ae is not responsible for any purchases made based on this analysis.</div>
+                </div>
+            </div>
+
+            <!-- Mid-page ad slot -->
+            <div class="ad-slot">[ Ad slot — Google AdSense ]</div>
+        </div>
+    </section>
+
+    <!-- Recent Verdicts -->
+    <section class="section" style="padding-top: 0;">
+        <div class="container">
+            <div class="section-label">Community Picks</div>
+            <h2 class="section-title">Recent verdicts</h2>
+            <p class="section-sub">What the community has been checking lately across Dubizzle and OpenSouk.</p>
+
+            <div class="verdicts-grid" id="verdictsGrid">
+                <p style="color:var(--subtext);text-align:center;padding:32px 0;grid-column:1/-1;">Loading recent verdicts…</p>
+            </div>
+        </div>
+    </section>
+
+</div><!-- /home -->
+
+<!-- ═══════════════════════════════════════════
+     PRICE TRACKER PAGE
+═══════════════════════════════════════════ -->
+<div class="page" id="page-tracker">
+    <section class="section">
+        <div class="container">
+
+            <div class="ad-slot">[ Ad slot — Google AdSense ]</div>
+
+            <div class="tracker-header">
+                <div>
+                    <div class="section-label">Market Data</div>
+                    <h2 class="section-title">UAE PC Price Tracker</h2>
+                    <p class="section-sub" style="margin-bottom:0;">Current UAE prices sourced from our manually-verified database. Add products in the admin panel to see them here.</p>
+                </div>
+                <div class="tracker-controls">
+                    <div id="priceStatus" class="price-status"></div>
+                    <button class="refresh-btn" id="refreshBtn" onclick="refreshPrices()">
+                        <span id="refreshBtnLabel">🔄 Refresh Prices</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-wrap" style="margin-top: 24px;">
+                <table class="price-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Price (AED)</th>
+                            <th>Last Updated</th>
+                            <th>Buy Now</th>
+                        </tr>
+                    </thead>
+                    <tbody id="priceTableBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="ad-slot">[ Ad slot — Google AdSense ]</div>
+
+            <p style="font-size: 0.78rem; color: var(--subtext-lt); margin-top: 4px;">
+                * Prices are manually verified and updated. Always confirm the current price before buying.
+            </p>
+
+        </div>
+    </section>
+</div><!-- /tracker -->
+
+<!-- ═══════════════════════════════════════════
+     HOT DEALS PAGE
+═══════════════════════════════════════════ -->
+<div class="page" id="page-deals">
+    <section class="section">
+        <div class="container">
+
+            <div class="ad-slot">[ Ad slot — Google AdSense ]</div>
+
+            <div class="deals-header">
+                <div>
+                    <div class="section-label">Live Finds</div>
+                    <h2 class="section-title">🔥 Hot Deals Right Now</h2>
+                    <p class="section-sub" style="margin-bottom:0;">AI-curated deals from Amazon.ae, Noon.com &amp; Dubizzle. Refreshed on demand.</p>
+                </div>
+                <button class="refresh-btn" id="dealsRefreshBtn" onclick="refreshDeals()">
+                    <span id="dealsRefreshLabel">🔄 Find Deals</span>
+                </button>
+            </div>
+
+            <div id="dealsGrid" class="deals-grid" style="margin-top:28px;">
+                <div class="deals-empty">
+                    <div style="font-size:2.5rem;margin-bottom:12px;">🛒</div>
+                    <p>Hit "Find Deals" to fetch today's best PC bargains in the UAE.</p>
+                </div>
+            </div>
+
+            <div class="ad-slot">[ Ad slot — Google AdSense ]</div>
+
+        </div>
+    </section>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     DEAL CHECKER PAGE
+═══════════════════════════════════════════ -->
+<div class="page" id="page-checker">
+    <section class="section">
+        <div class="container">
+
+            <div class="ad-slot">[ Ad slot — Google AdSense ]</div>
+
+            <div class="section-label">AI Analysis</div>
+            <h2 class="section-title">Deal Checker</h2>
+            <p class="section-sub">Paste any listing — Dubizzle, OpenSouk, WhatsApp, wherever — and get a straight verdict. No fluff.</p>
+
+            <div class="checker-card" style="max-width: 700px;">
+                <textarea
+                    class="deal-textarea"
+                    id="checkerInput"
+                    aria-label="Paste your PC listing here"
+                    placeholder="Paste your full listing here...
+
+Example:
+'RTX 4070 Super, 12GB GDDR6X, used for 6 months, no damage, selling for 2,500 AED. Located in JLT Dubai. Pick up only, no delivery. Reason for selling: upgrading.'
+
+Include specs, price, condition, and platform for the best analysis."
+                    style="min-height: 200px;"
+                ></textarea>
+                <button class="check-btn" id="checkerBtn" onclick="runCheck('checker')">
+                    <span id="checkerBtnLabel">Check This Deal →</span>
+                </button>
+                <div id="checkerVerdict" class="verdict-card">
+                    <div class="verdict-label" id="checkerVerdictLabel"></div>
+                    <div class="verdict-body" id="checkerVerdictBody"></div>
+                    <div class="verdict-disclaimer">⚠️ AI verdicts are a guide only — always verify before buying. CopOrDrop.ae is not responsible for any purchases made based on this analysis.</div>
+                </div>
+            </div>
+
+            <div class="ad-slot" style="max-width: 700px;">[ Ad slot — Google AdSense ]</div>
+
+            <div style="max-width: 700px; margin-top: 24px;">
+                <h3 style="font-family: var(--heading); font-size: 0.95rem; font-weight: 600; margin-bottom: 14px; color: var(--subtext);">Tips for the best results</h3>
+                <ul class="tips-list">
+                    <li>Include the asking price in AED</li>
+                    <li>List all the specs you know — GPU, CPU, RAM, storage</li>
+                    <li>Mention the platform (Dubizzle, OpenSouk, WhatsApp, etc.)</li>
+                    <li>Add condition notes — "like new", "used 2 years", "minor scratches"</li>
+                    <li>If it's a full build, include every component you can see</li>
+                    <li>Seller details help — reputation, number of reviews, pickup location</li>
+                </ul>
+            </div>
+
+        </div>
+    </section>
+</div><!-- /checker -->
+
+<!-- ═══════════════════════════════════════════
+     ABOUT PAGE
+═══════════════════════════════════════════ -->
+<div class="page" id="page-about">
+    <section class="section">
+        <div class="container">
+
+            <div class="section-label">The Story</div>
+            <h2 class="section-title">About CopOrDrop.ae</h2>
+
+            <div class="about-grid">
+                <!-- Left column -->
+                <div>
+                    <div class="about-card">
+                        <h2>Built different 💻</h2>
+                        <p>
+                            CopOrDrop.ae was built by a 16-year-old in Sharjah who got tired of seeing people get ripped off on Dubizzle.
+                        </p>
+                        <p>
+                            You know the vibe — someone lists a GTX 1080 for 1,800 AED calling it "still powerful for gaming" and people actually buy it, not realising they're basically funding someone else's upgrade. It happens every day in every UAE tech group.
+                        </p>
+                        <p>
+                            The UAE second-hand PC market is proper wild. Prices vary massively, sellers test you, and there's no easy way to know if you're getting played. So I built one.
+                        </p>
+                        <p>
+                            Paste any listing. Get a verdict. Simple.
+                        </p>
+                    </div>
+
+                    <div class="about-card">
+                        <h2>Should you trust it?</h2>
+                        <p>
+                            Honestly? Use it as a vibe check, not gospel. The AI knows UAE prices, understands PC specs, and has a decent nose for scams — but always do your own research too.
+                        </p>
+                        <p>
+                            The <a onclick="navigate('tracker')" style="cursor:pointer;">price tracker</a> is based on real listings from Dubizzle, OpenSouk, and local shops. It's not a live feed (yet), but it's way better than guessing from memory.
+                        </p>
+                        <p>
+                            And if the AI is wrong? Tell us. We're literally learning from every listing.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Right column -->
+                <div>
+                    <div class="about-card">
+                        <h2>By the numbers</h2>
+                        <div class="stat-grid">
+                            <div class="stat-item">
+                                <div class="stat-val">AED</div>
+                                <div class="stat-lbl">All prices in UAE Dirhams</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-val">AI</div>
+                                <div class="stat-lbl">Powered by Claude (Anthropic)</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-val">3</div>
+                                <div class="stat-lbl">Verdicts: COP · DROP · SCAM</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-val">🇦🇪</div>
+                                <div class="stat-lbl">UAE-focused, locally relevant</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="about-card">
+                        <h2>Get in touch</h2>
+                        <p>
+                            Spotted a bug? Think a verdict was off? Want to collab, feature a listing, or just say wagwan?
+                        </p>
+                        <p>
+                            Instagram: <a href="#">@CopOrDrop.ae</a><br>
+                            TikTok: <a href="#">@CopOrDrop.ae</a>
+                        </p>
+                        <p>DMs are open. No bots, no auto-replies. Just vibes.</p>
+                    </div>
+
+                    <!-- Sidebar ad slot -->
+                    <div class="ad-slot">[ Ad slot — Google AdSense ]</div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</div><!-- /about -->
+
+<!-- ═══════════════════════════════════════════
+     CHART MODAL
+═══════════════════════════════════════════ -->
+<div class="chart-modal-overlay" id="chartModal" onclick="if(event.target===this)closeChart()">
+    <div class="chart-modal">
+        <div class="chart-modal-header">
+            <div>
+                <div class="chart-modal-label">Price History &amp; Prediction</div>
+                <h3 class="chart-modal-title" id="chartTitle">—</h3>
+            </div>
+            <button class="chart-close-btn" onclick="closeChart()">✕</button>
+        </div>
+
+        <div class="chart-canvas-wrap" id="chartCanvasWrap">
+            <canvas id="priceChart"></canvas>
+        </div>
+        <div class="chart-no-data" id="chartNoData">
+            No price history yet.<br>Update the price from the admin panel each day to start tracking.
+        </div>
+
+        <div class="prediction-loading" id="predictionLoading">
+            <span class="spinner" style="vertical-align:middle;margin-right:8px;border-color:rgba(255,255,255,0.15);border-top-color:var(--accent);"></span>
+            Asking Claude for a price prediction…
+        </div>
+
+        <div class="prediction-card" id="predictionCard">
+            <div class="prediction-label">AI Price Forecast — Next 2–4 Weeks</div>
+            <div class="prediction-header">
+                <span class="prediction-badge" id="predBadge">—</span>
+                <span class="prediction-conf" id="predConf"></span>
+            </div>
+            <p class="prediction-summary" id="predSummary"></p>
+            <div class="prediction-factors" id="predFactors"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════ -->
+<footer>
+    <div class="footer-inner">
+        <div class="footer-grid">
+
+            <!-- Brand -->
+            <div>
+                <div class="footer-brand-name">CopOrDrop<span>.ae</span></div>
+                <p class="footer-brand-tagline">UAE's PC deal checker.<br>Powered by AI. Built in Sharjah.</p>
+                <div class="socials">
+                    <!-- Instagram -->
+                    <a href="#" class="social-icon" title="Instagram" aria-label="Instagram">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                            <circle cx="12" cy="12" r="4"/>
+                            <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none"/>
+                        </svg>
+                    </a>
+                    <!-- TikTok -->
+                    <a href="#" class="social-icon" title="TikTok" aria-label="TikTok">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V9.05a8.16 8.16 0 0 0 4.77 1.52V7.12a4.85 4.85 0 0 1-1-.43z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Nav -->
+            <div class="footer-col">
+                <h4>Navigate</h4>
+                <ul>
+                    <li><a onclick="navigate('home')">Home</a></li>
+                    <li><a onclick="navigate('tracker')">Price Tracker</a></li>
+                    <li><a onclick="navigate('deals')">Hot Deals</a></li>
+                    <li><a onclick="navigate('checker')">Deal Checker</a></li>
+                    <li><a onclick="navigate('about')">About</a></li>
+                </ul>
+            </div>
+
+            <!-- Tools -->
+            <div class="footer-col">
+                <h4>Tools</h4>
+                <ul>
+                    <li><a onclick="navigate('checker')">AI Deal Checker</a></li>
+                    <li><a onclick="navigate('tracker')">Price Tracker</a></li>
+                </ul>
+            </div>
+
+            <!-- Connect -->
+            <div class="footer-col">
+                <h4>Connect</h4>
+                <ul>
+                    <li><a href="#">Contact</a></li>
+                    <li><a href="#">Instagram</a></li>
+                    <li><a href="#">TikTok</a></li>
+                </ul>
+            </div>
+
+        </div>
+
+        <div class="footer-bottom">
+            <p>CopOrDrop.ae — Not financial advice. Just vibes and specs. 🇦🇪</p>
+            <p class="footer-affiliate">Some links may be affiliate links. Prices indicative only.</p>
+        </div>
+    </div>
+</footer>
+
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════ -->
+<script>
+// ──────────────── CONFIG ────────────────
+// API keys are kept server-side. Claude + SerpAPI calls go through /api/claude and /api/serp.
+
+// Amazon.ae affiliate tag — loaded from server env (AMAZON_AFFILIATE_TAG)
+let AMAZON_TAG = '';
+
+// ──────────────── NAVIGATION ────────────────
+function navigate(page) {
+    document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-links a').forEach(el => el.classList.remove('active'));
+
+    document.getElementById('page-' + page).classList.add('active');
+
+    const navEl = document.getElementById('nav-' + page);
+    if (navEl) navEl.classList.add('active');
+
+    document.getElementById('navLinks').classList.remove('open');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (page === 'home') loadRecentVerdicts();
+}
+
+function toggleMenu() {
+    document.getElementById('navLinks').classList.toggle('open');
+}
+
+function scrollToChecker() {
+    const el = document.getElementById('homeChecker');
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ──────────────── CHECK DEAL ────────────────
+const checkerConfig = {
+    home: {
+        inputId:     'homeInput',
+        btnId:       'homeBtn',
+        btnLabelId:  'homeBtnLabel',
+        verdictId:   'homeVerdict',
+        labelId:     'homeVerdictLabel',
+        bodyId:      'homeVerdictBody'
+    },
+    checker: {
+        inputId:     'checkerInput',
+        btnId:       'checkerBtn',
+        btnLabelId:  'checkerBtnLabel',
+        verdictId:   'checkerVerdict',
+        labelId:     'checkerVerdictLabel',
+        bodyId:      'checkerVerdictBody'
+    }
+};
+
+async function runCheck(id) {
+    const cfg    = checkerConfig[id];
+    const input  = document.getElementById(cfg.inputId).value.trim();
+    const btn    = document.getElementById(cfg.btnId);
+    const label  = document.getElementById(cfg.btnLabelId);
+    const vCard  = document.getElementById(cfg.verdictId);
+
+    if (!input) {
+        alert('Paste a listing first, fam 👀');
+        return;
+    }
+
+    // Loading state
+    btn.disabled = true;
+    label.innerHTML = '<span class="spinner"></span> Analysing…';
+    vCard.className  = 'verdict-card';
+    vCard.style.display = '';
+
+    const setStatus = (msg) => { label.innerHTML = `<span class="spinner"></span> ${msg}`; };
+
+    try {
+        const text = await callClaude(input, setStatus);
+        renderVerdict(text, cfg);
+    } catch (err) {
+        const vCard = document.getElementById(cfg.verdictId);
+        vCard.className = 'verdict-card drop';
+        vCard.style.display = '';
+        document.getElementById(cfg.labelId).innerHTML = '❌ Error';
+        document.getElementById(cfg.bodyId).textContent = 'Something went wrong: ' + err.message;
+    } finally {
+        btn.disabled = false;
+        label.textContent = 'Check This Deal →';
+    }
+}
+
+// ──────────────── CLAUDE API WITH WEB SEARCH TOOL ────────────────
+async function callClaude(listing, setStatus = () => {}) {
+    // Fetch current market prices from our database
+    let dbPrices = [];
+    try {
+        const r = await fetch('/api/products');
+        if (r.ok) dbPrices = (await r.json()).filter(p => p.price > 0);
+    } catch (e) {}
+
+    // Fetch Dubizzle used listings for context
+    setStatus('Checking Dubizzle used prices…');
+    let dubizzleListings = [];
+    try {
+        const r = await fetch('/api/dubizzle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: listing.slice(0, 80) })
+        });
+        if (r.ok) dubizzleListings = await r.json();
+    } catch (e) {}
+
+    const priceContext = dbPrices.length
+        ? `\n\nCURRENT UAE MARKET PRICES (tracked by us, not training data):\n${
+            dbPrices.map(p => `- ${p.name}: AED ${p.price.toLocaleString()} (checked ${new Date(p.checkedAt).toLocaleDateString('en-AE', { day: 'numeric', month: 'short' })})`).join('\n')
+          }`
+        : '';
+
+    const dubizzleContext = dubizzleListings.length
+        ? `\n\nLIVE DUBIZZLE USED LISTINGS RIGHT NOW:\n${
+            dubizzleListings.map(l => `- ${l.title}: AED ${l.price.toLocaleString()} (${l.condition})`).join('\n')
+          }`
+        : '';
+
+    const tools = [{
+        name: 'web_search',
+        description: 'Search Google for current UAE PC component prices. Use this to verify real market prices before giving your verdict. Search for the specific component + "price UAE" or "price AED".',
+        input_schema: {
+            type: 'object',
+            properties: {
+                query: {
+                    type: 'string',
+                    description: 'Google search query, e.g. "RTX 4070 price UAE 2026" or "used RTX 4070 Dubizzle UAE AED"'
+                }
+            },
+            required: ['query']
+        }
+    }];
+
+    const system = `You are CopOrDrop, a UAE PC parts expert and deal analyst.${priceContext}${dubizzleContext}
+
+YOUR JOB: Compare the ASKING PRICE in the listing against the current UAE market prices above to determine if it's a good deal.
+- If the listing price is BELOW market → lean COP
+- If the listing price is ABOVE market → lean DROP
+- For USED items: compare against Dubizzle used prices, factor in age and condition heavily
+- A used item should be 20-40% cheaper than new to be a COP
+- If the item is old/discontinued (like RTX 4090), compare to used market only
+
+You also have a web_search tool — use it if the product is NOT in our price list above.
+
+Give a verdict:
+- COP — good deal, worth buying
+- DROP — overpriced or bad specs for the money
+- SCAM RISK — something smells off
+
+Be direct, use Gen Z language. State the fair AED price and by how much the listing is over/under.
+
+Start your response with exactly one of:
+VERDICT: COP
+VERDICT: DROP
+VERDICT: SCAM RISK
+
+Then your analysis. Keep it under 200 words.`;
+
+    const messages = [{ role: 'user', content: `Analyse this UAE PC listing:\n\n${listing}` }];
+
+    // ── Agentic tool-use loop ──────────────────────────────
+    for (let round = 0; round < 5; round++) {
+        const body = {
+            model: 'claude-sonnet-4-6',
+            max_tokens: 1500,
+            system,
+            messages,
+            tools
+        };
+
+        const res = await fetch('/api/claude', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error?.message || `API error ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        // ── Tool call: Claude wants to search ──
+        if (data.stop_reason === 'tool_use') {
+            messages.push({ role: 'assistant', content: data.content });
+
+            const toolBlock = data.content.find(b => b.type === 'tool_use');
+            const query = toolBlock?.input?.query || '';
+            setStatus(`Searching: "${query}"`);
+
+            let searchResult = 'No results found.';
+            try {
+                const params = new URLSearchParams({ q: query, gl: 'ae', hl: 'en' });
+                const sRes  = await fetch(`/api/search?${params}`);
+                const sData = await sRes.json();
+
+                const shopping = (sData.shopping_results || []).slice(0, 5);
+                const organic  = (sData.organic_results  || []).slice(0, 5);
+
+                if (shopping.length) {
+                    searchResult = 'Google Shopping UAE results:\n' +
+                        shopping.map(r => `• ${r.title}: ${r.price} — ${r.source}`).join('\n');
+                } else if (organic.length) {
+                    searchResult = 'Google search results:\n' +
+                        organic.map(r => `• ${r.title}\n  ${r.snippet}`).join('\n\n');
+                }
+            } catch (e) {
+                searchResult = `Search failed: ${e.message}`;
+            }
+
+            // Feed results back to Claude
+            messages.push({
+                role: 'user',
+                content: [{
+                    type: 'tool_result',
+                    tool_use_id: toolBlock.id,
+                    content: searchResult
+                }]
+            });
+
+            setStatus('Analysing prices…');
+            continue;
+        }
+
+        // ── Final text response ──
+        const textBlock = data.content.find(b => b.type === 'text');
+        return textBlock ? textBlock.text : data.content[0].text;
+    }
+
+    throw new Error('Too many tool call rounds — something went wrong.');
+}
+
+// ──────────────── RENDER VERDICT ────────────────
+function renderVerdict(text, cfg) {
+    const lines       = text.split('\n');
+    const firstLine   = lines[0].trim().toUpperCase();
+    const bodyText    = lines.slice(1).join('\n').trim();
+
+    let type, emoji, label;
+
+    if (firstLine.includes('SCAM')) {
+        type = 'scam'; emoji = '⚠️'; label = 'SCAM RISK';
+    } else if (firstLine.includes('COP')) {
+        type = 'cop';  emoji = '✅'; label = 'COP IT';
+    } else {
+        type = 'drop'; emoji = '❌'; label = 'DROP IT';
+    }
+
+    const vCard = document.getElementById(cfg.verdictId);
+    vCard.className = `verdict-card ${type}`;
+    vCard.style.display = '';
+    document.getElementById(cfg.labelId).innerHTML = `${emoji} ${label}`;
+    document.getElementById(cfg.bodyId).textContent = bodyText;
+
+    // Save to recent verdicts
+    const inputEl = document.getElementById(cfg.inputId);
+    const rawInput = inputEl ? inputEl.value.trim() : '';
+    const title = rawInput.split('\n')[0].trim().slice(0, 80) || 'Deal check';
+    const summary = bodyText.slice(0, 200);
+    fetch('/api/verdicts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, title, summary })
+    }).then(() => loadRecentVerdicts()).catch(() => {});
+}
+
+// ──────────────── RECENT VERDICTS ────────────────
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function loadRecentVerdicts() {
+    const grid = document.getElementById('verdictsGrid');
+    if (!grid) return;
+    try {
+        const r = await fetch('/api/verdicts');
+        if (!r.ok) return;
+        const verdicts = await r.json();
+        if (!verdicts.length) {
+            grid.innerHTML = '<p style="color:var(--subtext);text-align:center;padding:32px 0;grid-column:1/-1;">No verdicts yet — be the first to check a deal above!</p>';
+            return;
+        }
+        grid.innerHTML = verdicts.map(v => {
+            const badgeClass = v.type === 'scam' ? 'scam' : v.type;
+            const badgeLabel = v.type === 'scam' ? 'SCAM RISK' : v.type.toUpperCase();
+            const time = new Date(v.checkedAt).toLocaleDateString('en-AE', { day: 'numeric', month: 'short' });
+            return `<div class="verdict-item">
+                <span class="vi-badge ${badgeClass}">${badgeLabel}</span>
+                <h3>${escapeHtml(v.title)}</h3>
+                <p>${escapeHtml(v.summary)}</p>
+                <div class="vi-prices"><span style="color:var(--subtext-lt);font-size:0.78rem;">${time}</span></div>
+            </div>`;
+        }).join('');
+    } catch (e) {}
+}
+
+// ──────────────── DEMO MODE ────────────────
+const DEMO_VERDICTS = [
+    {
+        type: 'cop',
+        label: '✅ COP IT',
+        body: `Aight ngl this is actually a solid deal no cap. The price is sitting about 10% below current market rate for this spec level, which in the UAE is genuinely rare — sellers usually add an unexplained "Dubai tax" for no reason lol.
+
+Pull the trigger. Just make sure you test it before handing over any cash — run a benchmark, check temps, no shortcuts.
+
+Fair price for this: right around what they're asking. Maybe wiggle them down 50 AED for fun.
+
+[DEMO MODE — Add your Anthropic API key to get real AI verdicts]`
+    },
+    {
+        type: 'drop',
+        label: '❌ DROP IT',
+        body: `Nah fam, this ain't it. They're charging 2023 prices for specs that were mid in 2021. You can genuinely get better performance for less on Dubizzle right now, today, with five minutes of searching.
+
+The only way this deal makes sense is if it comes with a free trip to Global Village. It does not.
+
+Fair price: at least 30–35% lower than what they're asking. Come back when they get realistic.
+
+[DEMO MODE — Add your Anthropic API key to get real AI verdicts]`
+    },
+    {
+        type: 'scam',
+        label: '⚠️ SCAM RISK',
+        body: `Something's off here and I can't fully put my finger on it — but the vibes are giving "I'll send by courier, just send the money first." The specs-to-price ratio doesn't add up, and the listing reads like it was written at 3am by someone who just googled what a GPU is.
+
+Could be legit, could be a repackaged card, could be a prayer. Hard to say.
+
+If you're going ahead: meet in a public place, test everything on the spot, pay cash only, and have someone with you.
+
+[DEMO MODE — Add your Anthropic API key to get real AI verdicts]`
+    }
+];
+
+function renderDemo(cfg) {
+    const demo  = DEMO_VERDICTS[Math.floor(Math.random() * DEMO_VERDICTS.length)];
+    const vCard = document.getElementById(cfg.verdictId);
+    vCard.className = `verdict-card ${demo.type}`;
+    document.getElementById(cfg.labelId).innerHTML = demo.label;
+    document.getElementById(cfg.bodyId).textContent = demo.body;
+}
+
+// ──────────────────────────────────────────────────────
+// PRICE TRACKER
+// ──────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────
+// COMPONENT DEFINITIONS
+// Each item has: key, name, spec, serpQuery (for live prices),
+// amazonQuery + noonQuery (for buy links)
+// ─────────────────────────────────────────────────
+const PRICE_COMPONENTS = [
+    { cat: '🎮 Graphics Cards (GPU)', items: [
+        { key: 'rtx4060',    name: 'NVIDIA RTX 4060',           spec: '8GB GDDR6 — 1080p',        serpQ: 'NVIDIA RTX 4060 graphics card',          amzQ: 'RTX+4060+graphics+card',          noonQ: 'RTX 4060 graphics card' },
+        { key: 'rtx4070',    name: 'NVIDIA RTX 4070',           spec: '12GB GDDR6X — 1440p',      serpQ: 'NVIDIA RTX 4070 graphics card',          amzQ: 'RTX+4070+graphics+card',          noonQ: 'RTX 4070 graphics card' },
+        { key: 'rtx4070tis', name: 'NVIDIA RTX 4070 Ti Super',  spec: '16GB GDDR6X — 4K Ready',   serpQ: 'NVIDIA RTX 4070 Ti Super graphics card', amzQ: 'RTX+4070+Ti+Super+graphics+card', noonQ: 'RTX 4070 Ti Super' },
+        { key: 'rtx4080s',   name: 'NVIDIA RTX 4080 Super',     spec: '16GB GDDR6X — High End',   serpQ: 'NVIDIA RTX 4080 Super graphics card',    amzQ: 'RTX+4080+Super+graphics+card',    noonQ: 'RTX 4080 Super' },
+        { key: 'rtx4090',    name: 'NVIDIA RTX 4090',           spec: '24GB GDDR6X — Overkill',   serpQ: 'NVIDIA RTX 4090 24GB graphics card',     amzQ: 'RTX+4090+graphics+card',          noonQ: 'RTX 4090 graphics card' },
+        { key: 'rx7600',     name: 'AMD RX 7600',               spec: '8GB GDDR6 — Budget',       serpQ: 'AMD RX 7600 8GB graphics card',          amzQ: 'AMD+RX+7600+graphics+card',       noonQ: 'AMD RX 7600' },
+        { key: 'rx7900xtx',  name: 'AMD RX 7900 XTX',          spec: '24GB GDDR6 — AMD Flagship', serpQ: 'AMD RX 7900 XTX graphics card',          amzQ: 'AMD+RX+7900+XTX',                 noonQ: 'AMD RX 7900 XTX' },
+    ]},
+    { cat: '🧠 Processors (CPU)', items: [
+        { key: 'i514600k',  name: 'Intel Core i5-14600K',   spec: '14 Cores — Gaming',            serpQ: 'Intel Core i5-14600K processor',     amzQ: 'Intel+i5+14600K',        noonQ: 'Intel i5 14600K' },
+        { key: 'i714700k',  name: 'Intel Core i7-14700K',   spec: '20 Cores — High Performance',  serpQ: 'Intel Core i7-14700K processor',     amzQ: 'Intel+i7+14700K',        noonQ: 'Intel i7 14700K' },
+        { key: 'r57600x',   name: 'AMD Ryzen 5 7600X',      spec: '6 Cores — AM5 Budget',         serpQ: 'AMD Ryzen 5 7600X processor',        amzQ: 'AMD+Ryzen+5+7600X',      noonQ: 'AMD Ryzen 5 7600X' },
+        { key: 'r77800x3d', name: 'AMD Ryzen 7 7800X3D',    spec: '3D V-Cache — Gaming King',     serpQ: 'AMD Ryzen 7 7800X3D processor',      amzQ: 'AMD+Ryzen+7+7800X3D',    noonQ: 'AMD Ryzen 7 7800X3D' },
+        { key: 'r97950x3d', name: 'AMD Ryzen 9 7950X3D',    spec: '16 Cores — Workstation',       serpQ: 'AMD Ryzen 9 7950X3D processor',      amzQ: 'AMD+Ryzen+9+7950X3D',    noonQ: 'AMD Ryzen 9 7950X3D' },
+    ]},
+    { cat: '💾 RAM', items: [
+        { key: 'ddr4_16',  name: '16GB DDR4 3200MHz (2×8)',   spec: 'Budget DDR4',               serpQ: '16GB DDR4 3200MHz RAM kit',          amzQ: '16GB+DDR4+3200MHz+RAM',         noonQ: '16GB DDR4 RAM' },
+        { key: 'ddr4_32',  name: '32GB DDR4 3600MHz (2×16)',  spec: 'Recommended DDR4',          serpQ: '32GB DDR4 3600MHz RAM kit',          amzQ: '32GB+DDR4+3600MHz+RAM',         noonQ: '32GB DDR4 RAM' },
+        { key: 'ddr5_32',  name: '32GB DDR5 5600MHz (2×16)',  spec: 'AM5 / LGA1700',             serpQ: '32GB DDR5 5600MHz RAM kit',          amzQ: '32GB+DDR5+5600MHz+RAM',         noonQ: '32GB DDR5 RAM' },
+        { key: 'ddr5_64',  name: '64GB DDR5 6000MHz (2×32)',  spec: 'Content Creation',          serpQ: '64GB DDR5 6000MHz RAM kit',          amzQ: '64GB+DDR5+6000MHz+RAM',         noonQ: '64GB DDR5 RAM' },
+    ]},
+    { cat: '💿 Storage (SSD)', items: [
+        { key: 'sata1tb',      name: 'Samsung 870 EVO 1TB',       spec: 'SATA SSD',                  serpQ: 'Samsung 870 EVO 1TB SSD',            amzQ: 'Samsung+870+EVO+1TB',           noonQ: 'Samsung 870 EVO 1TB' },
+        { key: 'nvme_970_1tb', name: 'Samsung 970 EVO Plus 1TB',  spec: 'NVMe Gen3 M.2',             serpQ: 'Samsung 970 EVO Plus 1TB NVMe SSD',  amzQ: 'Samsung+970+EVO+Plus+1TB+NVMe', noonQ: 'Samsung 970 EVO 1TB NVMe' },
+        { key: 'nvme_sn850_1', name: 'WD Black SN850X 1TB',       spec: 'NVMe Gen4 — PS5 Compatible', serpQ: 'WD Black SN850X 1TB NVMe SSD',      amzQ: 'WD+Black+SN850X+1TB',           noonQ: 'WD Black SN850X 1TB' },
+        { key: 'nvme_990_2tb', name: 'Samsung 990 Pro 2TB',       spec: 'NVMe Gen4 — High Capacity',  serpQ: 'Samsung 990 Pro 2TB NVMe SSD',      amzQ: 'Samsung+990+Pro+2TB+NVMe',      noonQ: 'Samsung 990 Pro 2TB' },
+    ]},
+    { cat: '🖥️ Monitors', items: [
+        { key: 'mon_1080_144', name: 'LG 27" 144Hz IPS 1080p',          spec: 'Entry Level',         serpQ: 'LG 27 inch 144Hz 1080p gaming monitor',         amzQ: 'LG+27+inch+144Hz+1080p+monitor',      noonQ: 'LG 27 144Hz monitor' },
+        { key: 'mon_1440_165', name: 'Samsung Odyssey G5 27" 165Hz QHD', spec: 'Recommended 1440p',   serpQ: 'Samsung Odyssey G5 27 165Hz 1440p monitor',     amzQ: 'Samsung+Odyssey+G5+27+165Hz+1440p',   noonQ: 'Samsung Odyssey G5 27' },
+        { key: 'mon_1440_240', name: 'ASUS ROG Swift 27" 240Hz QHD',    spec: 'Enthusiast',           serpQ: 'ASUS ROG Swift 27 240Hz 1440p gaming monitor',  amzQ: 'ASUS+ROG+Swift+27+240Hz+1440p',       noonQ: 'ASUS ROG 27 240Hz' },
+        { key: 'mon_4k_oled',  name: 'LG UltraGear 27" 4K 144Hz OLED', spec: 'Premium',              serpQ: 'LG UltraGear 27 4K 144Hz OLED gaming monitor',  amzQ: 'LG+UltraGear+27+4K+OLED+monitor',     noonQ: 'LG UltraGear 4K OLED 27' },
+    ]},
+];
+
+
+// ─────────────────────────────────────────────────
+// CACHE HELPERS
+// ─────────────────────────────────────────────────
+const DEALS_CACHE_KEY = 'cod_deals_v1';
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+
+function loadCache(key) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const c = JSON.parse(raw);
+        if (Date.now() - c.timestamp > CACHE_TTL) return null;
+        return c;
+    } catch { return null; }
+}
+function saveCache(key, data) {
+    localStorage.setItem(key, JSON.stringify({ timestamp: Date.now(), data }));
+}
+
+// ─────────────────────────────────────────────────
+// BUILD AFFILIATE LINKS
+// ─────────────────────────────────────────────────
+function amazonLink(query) {
+    const tag = (AMAZON_TAG && AMAZON_TAG !== 'PASTE-AFFILIATE-TAG') ? `&tag=${AMAZON_TAG}` : '';
+    return `https://www.amazon.ae/s?k=${query}${tag}`;
+}
+function noonLink(query) {
+    return `https://www.noon.com/uae-en/search/?q=${encodeURIComponent(query)}`;
+}
+
+// ─────────────────────────────────────────────────
+// RENDER PRICE TABLE
+// Renders products fetched from the database
+// ─────────────────────────────────────────────────
+const CAT_EMOJI = { GPU: '🎮', CPU: '🧠', RAM: '💾', SSD: '💿', Monitor: '🖥️', Other: '🛒' };
+
+function renderPriceTable(products) {
+    const tbody    = document.getElementById('priceTableBody');
+    const statusEl = document.getElementById('priceStatus');
+
+    if (!products.length) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:48px 20px;color:var(--subtext);">
+            No products in the database yet.<br>
+            <a href="/admin" style="color:var(--accent);text-decoration:none;" target="_blank">Open the admin panel ↗</a> to add products with their current AED prices.
+        </td></tr>`;
+        statusEl.textContent = 'No products in database';
+        statusEl.className = 'price-status error';
+        return;
+    }
+
+    // Group by category
+    const groups = {};
+    for (const p of products) {
+        const cat = p.category || 'Other';
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(p);
+    }
+
+    let html = '';
+    for (const [cat, items] of Object.entries(groups)) {
+        const emoji = CAT_EMOJI[cat] || '🛒';
+        html += `<tr class="cat-row"><td colspan="4">${emoji} ${cat}</td></tr>`;
+        for (const item of items) {
+            const checkedDate = item.checkedAt
+                ? new Date(item.checkedAt).toLocaleDateString('en-AE', { day: 'numeric', month: 'short', year: 'numeric' })
+                : '—';
+            const nameQ = encodeURIComponent(item.name).replace(/%20/g, '+');
+            const safeItemName = item.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+            html += `<tr>
+                <td><div class="comp-name">${item.name}</div></td>
+                <td class="price-cell">${Number(item.price).toLocaleString()} AED</td>
+                <td style="font-size:0.8rem;color:var(--subtext);">Checked ${checkedDate}</td>
+                <td>
+                    <button class="chart-btn" onclick="openChart('${item.id}','${safeItemName}')">📈 Chart &amp; Predict</button>
+                    <a class="buy-link" href="${amazonLink(nameQ)}" target="_blank" rel="noopener">Amazon.ae ↗</a>
+                    <a class="buy-link noon" href="${noonLink(item.name)}" target="_blank" rel="noopener">Noon ↗</a>
+                </td>
+            </tr>`;
+        }
+    }
+    tbody.innerHTML = html;
+
+    statusEl.textContent = `✅ ${products.length} product${products.length !== 1 ? 's' : ''} — prices from database`;
+    statusEl.className = 'price-status';
+}
+
+// ─────────────────────────────────────────────────
+// REFRESH PRICES — loads from database
+// ─────────────────────────────────────────────────
+async function refreshPrices() {
+    const btn      = document.getElementById('refreshBtn');
+    const label    = document.getElementById('refreshBtnLabel');
+    const statusEl = document.getElementById('priceStatus');
+
+    btn.disabled = true;
+    label.innerHTML = '<span class="spinning">🔄</span> Loading…';
+    statusEl.textContent = 'Loading products from database…';
+    statusEl.className = 'price-status loading';
+
+    try {
+        const res = await fetch('/api/products');
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
+        const products = await res.json();
+        renderPriceTable(products);
+    } catch (err) {
+        statusEl.textContent = `⚠️ ${err.message}`;
+        statusEl.className = 'price-status error';
+        document.getElementById('priceTableBody').innerHTML =
+            '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--subtext);">Could not load prices. Make sure the server is running.</td></tr>';
+    } finally {
+        btn.disabled = false;
+        label.textContent = '🔄 Refresh Prices';
+    }
+}
+
+// ─────────────────────────────────────────────────
+// HOT DEALS — fetch via Claude AI
+// ─────────────────────────────────────────────────
+async function refreshDeals() {
+    const btn   = document.getElementById('dealsRefreshBtn');
+    const label = document.getElementById('dealsRefreshLabel');
+    const grid  = document.getElementById('dealsGrid');
+
+    // Use cache if fresh
+    const cache = loadCache(DEALS_CACHE_KEY);
+    if (cache && cache.data?.length) {
+        renderDeals(cache.data);
+        return;
+    }
+
+    btn.disabled = true;
+    label.innerHTML = '<span class="spinning">🔄</span> Finding deals…';
+    grid.innerHTML  = `<div class="deals-empty"><div class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto 16px;"></div><p>Asking AI for today's best UAE PC deals…</p></div>`;
+
+    // Fetch DB prices to inject into prompt
+    let dbPrices = [];
+    try {
+        const r = await fetch('/api/products');
+        if (r.ok) dbPrices = await r.json();
+    } catch (e) {}
+
+    const priceContext = dbPrices.length
+        ? `\n\nIMPORTANT: Ignore your training data for prices completely. Use ONLY these current UAE prices I am providing you which were checked recently:\n${
+            dbPrices.map(p => `- ${p.name} (${p.category}): ${p.price} AED (checked ${new Date(p.checkedAt).toLocaleDateString('en-AE', { day: 'numeric', month: 'short', year: 'numeric' })})`).join('\n')
+          }\nIf a product isn't in this list, say you don't have current pricing for it rather than guessing.`
+        : '';
+
+    const prompt = `You are a UAE PC deals expert. Today is ${new Date().toDateString()}.${priceContext}
+
+Find the 6 best value PC hardware deals available RIGHT NOW in the UAE market (Amazon.ae, Noon.com, Sharaf DG, Dubizzle).
+Focus on components where current UAE prices represent genuinely good value — either below typical market rate, recently dropped in price, or just the best option at their price tier.
+
+Reply ONLY with a JSON array. No markdown, no explanation. Format:
+[
+  {
+    "name": "Short product name",
+    "desc": "One punchy sentence on why it's a good deal",
+    "platform": "Amazon.ae" | "Noon.com" | "Dubizzle" | "Sharaf DG",
+    "price": NUMBER (AED, integer),
+    "wasPriceIfApplicable": NUMBER or null,
+    "savingPct": NUMBER or null,
+    "amazonQuery": "search query string for Amazon.ae",
+    "noonQuery": "search query string for Noon.com",
+    "category": "GPU" | "CPU" | "RAM" | "SSD" | "Monitor" | "Other"
+  }
+]`;
+
+    try {
+        const res = await fetch('/api/claude', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 1500,
+                system: 'UAE PC deals expert. Reply only with valid JSON arrays. No markdown fences. No explanation.',
+                messages: [{ role: 'user', content: prompt }]
+            })
+        });
+        if (!res.ok) throw new Error(`API ${res.status}`);
+        const data = await res.json();
+        let text = data.content[0].text.trim().replace(/^```[a-z]*\n?/i,'').replace(/\n?```$/i,'');
+        const deals = JSON.parse(text);
+        saveCache(DEALS_CACHE_KEY, deals);
+        renderDeals(deals);
+    } catch (err) {
+        grid.innerHTML = `<div class="deals-empty"><p>Couldn't fetch deals: ${err.message}</p></div>`;
+    } finally {
+        btn.disabled = false;
+        label.textContent = '🔄 Find Deals';
+    }
+}
+
+function renderDeals(deals) {
+    const catEmoji = { GPU:'🎮', CPU:'🧠', RAM:'💾', SSD:'💿', Monitor:'🖥️', Other:'🛒' };
+    const grid = document.getElementById('dealsGrid');
+
+    grid.innerHTML = deals.map(d => {
+        const emoji = catEmoji[d.category] || '🛒';
+        const savingBadge = d.savingPct ? `<span class="deal-saving">−${d.savingPct}%</span>` : '';
+        const wasBadge = d.wasPriceIfApplicable ? `<span class="deal-was">${Number(d.wasPriceIfApplicable).toLocaleString()} AED</span>` : '';
+        const amzHref  = amazonLink(encodeURIComponent(d.amazonQuery || d.name).replace(/%20/g,'+'));
+        const noonHref = noonLink(d.noonQuery || d.name);
+
+        return `<div class="deal-card">
+            <div class="deal-platform">${emoji} ${d.platform} · ${d.category}</div>
+            <div class="deal-name">${d.name}</div>
+            <div class="deal-desc">${d.desc}</div>
+            <div class="deal-pricing">
+                <span class="deal-price">${Number(d.price).toLocaleString()} AED</span>
+                ${wasBadge}${savingBadge}
+            </div>
+            <div class="deal-btns">
+                <a class="deal-btn-primary" href="${amzHref}" target="_blank" rel="noopener">Amazon.ae ↗</a>
+                <a class="deal-btn-secondary" href="${noonHref}" target="_blank" rel="noopener">Noon ↗</a>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ──────────────── CHART MODAL ────────────────
+let _chartInstance = null;
+
+async function openChart(productId, productName) {
+    const modal = document.getElementById('chartModal');
+    const canvasWrap = document.getElementById('chartCanvasWrap');
+    const noData = document.getElementById('chartNoData');
+    const predCard = document.getElementById('predictionCard');
+    const predLoading = document.getElementById('predictionLoading');
+
+    document.getElementById('chartTitle').textContent = productName;
+    modal.classList.add('open');
+    canvasWrap.style.display = 'block';
+    noData.style.display = 'none';
+    predCard.style.display = 'none';
+    predLoading.style.display = 'block';
+
+    if (_chartInstance) { _chartInstance.destroy(); _chartInstance = null; }
+
+    let history = [];
+    try {
+        const r = await fetch(`/api/products/${productId}/history`);
+        if (r.ok) history = await r.json();
+    } catch (e) {}
+
+    if (!history.length) {
+        canvasWrap.style.display = 'none';
+        noData.style.display = 'block';
+        predLoading.style.display = 'none';
+        return;
+    }
+
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    _chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: history.map(h => h.date),
+            datasets: [{
+                label: 'Price (AED)',
+                data: history.map(h => h.price),
+                borderColor: '#00ff88',
+                backgroundColor: 'rgba(0,255,136,0.07)',
+                borderWidth: 2.5,
+                pointBackgroundColor: '#00ff88',
+                pointBorderColor: '#0f0f0f',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                tension: 0.35,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1c1c1c',
+                    borderColor: '#2a2a2a',
+                    borderWidth: 1,
+                    titleColor: '#888',
+                    bodyColor: '#fff',
+                    bodyFont: { family: 'Space Grotesk', weight: '700', size: 14 },
+                    callbacks: { label: ctx => `AED ${ctx.parsed.y.toLocaleString()}` }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.04)' },
+                    ticks: { color: '#666', font: { size: 11 } }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.04)' },
+                    ticks: {
+                        color: '#666',
+                        font: { size: 11 },
+                        callback: v => 'AED ' + v.toLocaleString()
+                    }
+                }
+            }
+        }
+    });
+
+    // Fetch AI prediction
+    try {
+        const r = await fetch(`/api/products/${productId}/predict`, { method: 'POST' });
+        if (r.ok) {
+            const pred = await r.json();
+            if (!pred.error) renderPrediction(pred);
+            else predLoading.style.display = 'none';
+        } else {
+            predLoading.style.display = 'none';
+        }
+    } catch (e) {
+        predLoading.style.display = 'none';
+    }
+}
+
+function renderPrediction(pred) {
+    document.getElementById('predictionLoading').style.display = 'none';
+    const card = document.getElementById('predictionCard');
+    card.style.display = 'block';
+
+    const badge = document.getElementById('predBadge');
+    const dirMap = {
+        UP:   { label: '↑ Price Going UP',    cls: 'pred-up' },
+        DOWN: { label: '↓ Price Going DOWN',   cls: 'pred-down' },
+        FLAT: { label: '→ Price Staying FLAT', cls: 'pred-flat' }
+    };
+    const dir = dirMap[pred.direction] || dirMap.FLAT;
+    badge.textContent = dir.label;
+    badge.className = 'prediction-badge ' + dir.cls;
+
+    document.getElementById('predConf').textContent = (pred.confidence || '') + ' confidence';
+    document.getElementById('predSummary').textContent = pred.summary || '';
+    document.getElementById('predFactors').innerHTML = (pred.factors || [])
+        .map(f => `<span class="pred-factor">${f}</span>`).join('');
+}
+
+function closeChart() {
+    document.getElementById('chartModal').classList.remove('open');
+    if (_chartInstance) { _chartInstance.destroy(); _chartInstance = null; }
+}
+
+// Auto-load on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    // Load affiliate tag from server
+    try {
+        const r = await fetch('/api/config');
+        if (r.ok) {
+            const cfg = await r.json();
+            if (cfg.amazonTag) AMAZON_TAG = cfg.amazonTag;
+        }
+    } catch (e) {}
+
+    refreshPrices();
+    loadRecentVerdicts();
+});
+
+// ──────────────── KEYBOARD SHORTCUT ────────────────
+// Ctrl/Cmd + Enter to submit from active page
+document.addEventListener('keydown', function (e) {
+    if (!(e.ctrlKey || e.metaKey) || e.key !== 'Enter') return;
+    const active = document.querySelector('.page.active')?.id;
+    if (active === 'page-home')    runCheck('home');
+    if (active === 'page-checker') runCheck('checker');
+});
+</script>
+
+</body>
+</html>
