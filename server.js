@@ -283,8 +283,8 @@ app.post('/api/admin/track-prices', authRequired, (req, res) => {
 });
 
 // ── Daily Gemini price tracker — 6:00 AM UAE time (02:00 UTC) ──
-cron.schedule('0 2 * * *', () => {
-    console.log('[CRON] Running daily Gemini price tracker...');
+cron.schedule('0 19 * * *', () => {
+    console.log('[CRON] Running daily price tracker (11 PM UAE)...');
     trackAllPrices().catch(console.error);
 }, { timezone: 'UTC' });
 
