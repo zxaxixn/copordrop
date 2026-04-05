@@ -7,6 +7,7 @@ const chromium  = require('@sparticuz/chromium');
 const PCPP_GITHUB_BASE = 'https://jonathanvusich.github.io/pcpartpicker-scraper';
 
 const USD_TO_AED     = 3.67;
+const UAE_MARGIN     = 1.15; // UAE retail is ~15% above US price after VAT + import
 const PCPP_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
 const pcppCache      = {};
 
@@ -119,21 +120,43 @@ async function fetchPcppParts(partSlug) {
     }
 }
 
+// Tier-differentiating keywords — a match containing these that the query doesn't have is penalised
+const TIER_KEYWORDS = ['ti', 'xt', 'xtx', 'super', 'ultra', 'gre', 'xt', 'pro', 'max', 'plus', 'oc'];
+
 // Find closest match and return USD price + AED equivalent
 async function getPcppReference(productName, category) {
     const partSlug = CATEGORY_TO_PCPP[category];
     if (!partSlug) return null;
     try {
-        const parts  = await fetchPcppParts(partSlug);
-        const tokens = productName.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
-        let best = null, bestScore = 0;
+        const parts      = await fetchPcppParts(partSlug);
+        const queryClean = productName.toLowerCase().replace(/[^a-z0-9 ]/g, ' ');
+        const tokens     = queryClean.split(/\s+/).filter(Boolean);
+
+        let best = null, bestScore = -Infinity;
+
         for (const p of parts) {
-            const label = p.name.toLowerCase();
-            const score = tokens.filter(t => label.includes(t)).length;
+            const label      = p.name.toLowerCase().replace(/[^a-z0-9 ]/g, ' ');
+            const labelWords = label.split(/\s+/).filter(Boolean);
+
+            // Base score: how many query tokens appear in the label
+            const matchScore = tokens.filter(t => label.includes(t)).length;
+
+            // Penalty: tier words present in label but NOT in query
+            const tierPenalty = TIER_KEYWORDS.filter(
+                kw => labelWords.includes(kw) && !tokens.includes(kw)
+            ).length * 2;
+
+            // Bonus: exact model number match (e.g. "5070" appears as whole word)
+            const modelTokens  = tokens.filter(t => /^\d{3,}/.test(t));
+            const exactBonus   = modelTokens.filter(t => labelWords.includes(t)).length;
+
+            const score = matchScore - tierPenalty + exactBonus;
+
             if (score > bestScore) { bestScore = score; best = p; }
         }
+
         if (!best || bestScore < 2) return null;
-        const aedEquiv = Math.round(best.price * USD_TO_AED);
+        const aedEquiv = Math.round(best.price * USD_TO_AED * UAE_MARGIN);
         return { label: best.name, usdPrice: best.price, aedEquiv };
     } catch {
         return null;
