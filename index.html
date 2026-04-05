@@ -1581,7 +1581,7 @@ async function callClaude(listing, setStatus = () => {}) {
     } catch (e) {}
 
     // Fetch Dubizzle used listings for context
-    setStatus('Checking Dubizzle used prices…');
+    setStatus('Checking used market prices…');
     let dubizzleListings = [];
     try {
         const r = await fetch('/api/dubizzle', {
@@ -1592,15 +1592,29 @@ async function callClaude(listing, setStatus = () => {}) {
         if (r.ok) dubizzleListings = await r.json();
     } catch (e) {}
 
+    // Only keep Dubizzle listings that explicitly mention a used condition —
+    // listings without condition keywords are likely retailers selling new stock
+    const USED_KEYWORDS = [
+        'used', 'flawless', 'barely used', 'like new', 'excellent', 'good condition',
+        'mint', 'second hand', 'secondhand', 'open box', 'pre-owned', 'preowned',
+        'lightly used', 'well maintained', 'refurbished', 'slight scratch',
+        'minor scratch', 'works perfectly', 'fully working', 'في حالة ممتازة',
+        'مستعمل', 'بحالة ممتازة'
+    ];
+    const confirmedUsed = dubizzleListings.filter(l => {
+        const haystack = `${l.title} ${l.condition}`.toLowerCase();
+        return USED_KEYWORDS.some(kw => haystack.includes(kw));
+    });
+
     const priceContext = dbPrices.length
-        ? `\n\nCURRENT UAE MARKET PRICES (tracked by us, not training data):\n${
+        ? `\n\nCURRENT UAE NEW PRODUCT PRICES (live tracked from Noon, Sharaf DG, Microless — not training data):\n${
             dbPrices.map(p => `- ${p.name}: AED ${p.price.toLocaleString()} (checked ${new Date(p.checkedAt).toLocaleDateString('en-AE', { day: 'numeric', month: 'short' })})`).join('\n')
           }`
         : '';
 
-    const dubizzleContext = dubizzleListings.length
-        ? `\n\nLIVE DUBIZZLE USED LISTINGS RIGHT NOW:\n${
-            dubizzleListings.map(l => `- ${l.title}: AED ${l.price.toLocaleString()} (${l.condition})`).join('\n')
+    const dubizzleContext = confirmedUsed.length
+        ? `\n\nLIVE DUBIZZLE USED LISTINGS (confirmed second-hand listings only):\n${
+            confirmedUsed.map(l => `- ${l.title}: AED ${l.price.toLocaleString()} (${l.condition})`).join('\n')
           }`
         : '';
 
@@ -1621,14 +1635,14 @@ async function callClaude(listing, setStatus = () => {}) {
 
     const system = `You are CopOrDrop, a UAE PC parts expert and deal analyst.${priceContext}${dubizzleContext}
 
-YOUR JOB: Compare the ASKING PRICE in the listing against the current UAE market prices above to determine if it's a good deal.
-- If the listing price is BELOW market → lean COP
-- If the listing price is ABOVE market → lean DROP
-- For USED items: compare against Dubizzle used prices, factor in age and condition heavily
-- A used item should be 20-40% cheaper than new to be a COP
-- If the item is old/discontinued (like RTX 4090), compare to used market only
+YOUR JOB: Compare the ASKING PRICE in the listing against current UAE market prices to determine if it's a good deal.
+- NEW item listing: compare against our NEW PRODUCT PRICES above (live tracked from UAE retailers)
+- USED item listing: compare against the DUBIZZLE USED LISTINGS above AND factor in condition/age heavily
+- A used item should be 20-40% cheaper than new retail to be a COP
+- If the item is old/discontinued, compare to used market only
+- If no Dubizzle used listings are shown, there wasn't enough confirmed second-hand data — rely on new retail prices and apply a used discount mentally
 
-You also have a web_search tool — use it if the product is NOT in our price list above.
+You also have a web_search tool — use it if the product is NOT in our price lists above.
 
 Give a verdict:
 - COP — good deal, worth buying
