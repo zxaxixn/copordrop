@@ -5,6 +5,35 @@ const { readDB, writeDB } = require('./db');
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// ── Gemini Search grounding ──────────────────────────────────────────
+async function getGeminiPrice(productName) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error('No GEMINI_API_KEY');
+
+    const prompt = `What is the current retail price of "${productName}" in the UAE in AED? Search the web and return ONLY a single number with no text, no currency symbol, no explanation. Example: 3250`;
+
+    const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+        {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                tools:    [{ google_search: {} }]
+            })
+        }
+    );
+
+    const data = await res.json();
+    if (data.error) throw new Error(`Gemini API error: ${data.error.message}`);
+
+    const text  = data.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim();
+    const price = parseInt(text?.replace(/[^0-9]/g, ''), 10);
+    if (!price || price < 200 || price > 500000) throw new Error(`Invalid price from Gemini: "${text}"`);
+
+    return { price, source: 'Gemini Search' };
+}
+
 let isTracking = false;
 
 // Generate weekly price history from Jan 5 2026 to yesterday using current price as baseline
@@ -42,15 +71,25 @@ async function trackAllPrices() {
             try {
                 let result = null;
 
-                // ── 1. Try PCPartPicker first (no browser, fast) ──────────
+                // ── 1. Try Gemini Search first (live web, no browser) ─────
                 try {
-                    result = await getPcppPrice(product.name, product.category);
-                    console.log(`      ✓ PCPartPicker: ${result.source}`);
+                    result = await getGeminiPrice(product.name);
+                    console.log(`      ✓ Gemini Search: AED ${result.price.toLocaleString()}`);
                 } catch (e) {
-                    console.log(`      ✗ PCPartPicker: ${e.message}`);
+                    console.log(`      ✗ Gemini: ${e.message}`);
                 }
 
-                // ── 2. If PCPP failed, scrape UAE sites ───────────────────
+                // ── 2. Try PCPartPicker (no browser, fast) ────────────────
+                if (!result) {
+                    try {
+                        result = await getPcppPrice(product.name, product.category);
+                        console.log(`      ✓ PCPartPicker: ${result.source}`);
+                    } catch (e) {
+                        console.log(`      ✗ PCPartPicker: ${e.message}`);
+                    }
+                }
+
+                // ── 3. If both failed, scrape UAE sites ───────────────────
                 if (!result) {
                     // Launch browser on demand — only when actually needed
                     if (!browser) {
@@ -69,9 +108,9 @@ async function trackAllPrices() {
                 const lastKnown = db.priceHistory[product.id].slice(-1)[0];
                 if (lastKnown && lastKnown.price > 0) {
                     const change = Math.abs(result.price - lastKnown.price) / lastKnown.price;
-                    // PCPartPicker is a trusted source — allow up to 80% swing
+                    // Gemini + PCPartPicker are trusted sources — allow up to 80% swing
                     // UAE scrapers (Noon etc.) allow 40%
-                    const threshold = result.source.includes('PCPartPicker') ? 0.80 : 0.40;
+                    const threshold = (result.source.includes('PCPartPicker') || result.source.includes('Gemini')) ? 0.80 : 0.40;
                     if (change > threshold) {
                         throw new Error(
                             `Sanity check failed — AED ${result.price.toLocaleString()} is ` +
