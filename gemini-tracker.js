@@ -1,5 +1,4 @@
 require('dotenv').config();
-const { launchStealthBrowser, scrapeUAEPrice } = require('./scraper-engine');
 const { getPcppPrice } = require('./pcpp');
 const { readDB, writeDB } = require('./db');
 
@@ -61,8 +60,6 @@ async function trackAllPrices() {
     const today = new Date().toISOString().slice(0, 10);
     let updated = 0;
     const errors = [];
-    let browser  = null;
-
     console.log(`[${new Date().toISOString()}] Price tracker — ${db.products.length} products`);
 
     try {
@@ -89,17 +86,9 @@ async function trackAllPrices() {
                     }
                 }
 
-                // ── 3. If both failed, scrape UAE sites ───────────────────
+                // ── 3. Both failed — skip this product ────────────────────
                 if (!result) {
-                    // Launch browser on demand — only when actually needed
-                    if (!browser) {
-                        console.log('      [Launching stealth browser…]');
-                        browser = await launchStealthBrowser();
-                    } else if (!browser.isConnected()) {
-                        console.log('      [Browser crashed, relaunching…]');
-                        browser = await launchStealthBrowser();
-                    }
-                    result = await scrapeUAEPrice(browser, product.name);
+                    throw new Error('Gemini and PCPartPicker both unavailable');
                 }
 
                 // ── 3. Sanity check ───────────────────────────────────────
@@ -147,9 +136,6 @@ async function trackAllPrices() {
             await sleep(2000);
         }
     } finally {
-        if (browser) {
-            try { await browser.close(); } catch {}
-        }
         isTracking = false;
     }
 
