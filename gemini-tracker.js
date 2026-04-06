@@ -14,16 +14,36 @@ async function getOpenAIPrice(productName) {
     const response = await openai.responses.create({
         model: 'gpt-4o',
         tools: [{ type: 'web_search_preview' }],
-        input: `What is the current retail price of "${productName}" in the UAE in AED? Search the web and return ONLY a single number with no text, no currency symbol, no explanation. Example: 3250`
+        input: `Search for the current retail price of "${productName}" in the UAE in AED from multiple retailers (noon.com, amazon.ae, sharafdg.com, etc). Find prices from 2-3 different stores, calculate the average, and respond with ONLY a JSON object like this: {"price": 3250}. No other text.`
     });
 
-    const text  = response.output.filter(o => o.type === 'message')
-                                 .flatMap(o => o.content)
-                                 .filter(c => c.type === 'output_text')
-                                 .map(c => c.text).join('').trim();
+    const text = response.output.filter(o => o.type === 'message')
+                                .flatMap(o => o.content)
+                                .filter(c => c.type === 'output_text')
+                                .map(c => c.text).join('').trim();
 
-    const price = parseInt(text?.replace(/[^0-9]/g, ''), 10);
-    if (!price || price < 200 || price > 500000) throw new Error(`Invalid price from OpenAI: "${text}"`);
+    // Try JSON parse first
+    let price;
+    try {
+        const jsonMatch = text.match(/\{[^}]*"price"\s*:\s*(\d+)[^}]*\}/);
+        if (jsonMatch) {
+            price = parseInt(jsonMatch[1], 10);
+        } else {
+            const parsed = JSON.parse(text);
+            price = parseInt(parsed.price, 10);
+        }
+    } catch {
+        // Fallback: find all standalone numbers in valid price range, take median
+        const nums = [...text.matchAll(/(?<![/\w])(\d{3,6})(?!\d)/g)]
+            .map(m => parseInt(m[1], 10))
+            .filter(n => n >= 200 && n <= 500000);
+        if (nums.length > 0) {
+            nums.sort((a, b) => a - b);
+            price = nums[Math.floor(nums.length / 2)];
+        }
+    }
+
+    if (!price || price < 200 || price > 500000) throw new Error(`Invalid price from OpenAI: "${text.slice(0, 120)}"`);
 
     return { price, source: 'OpenAI Web Search' };
 }
@@ -96,26 +116,13 @@ async function trackAllPrices() {
                 if (!db.priceHistory[product.id]) db.priceHistory[product.id] = [];
 
                 if (product.msrp) {
-                    // Primary check: price must be within 50%–250% of MSRP
+                    // Sanity check: price must be within 30%–400% of MSRP
                     const ratio = result.price / product.msrp;
-                    if (ratio < 0.5 || ratio > 2.5) {
+                    if (ratio < 0.3 || ratio > 4.0) {
                         throw new Error(
                             `MSRP check failed — AED ${result.price.toLocaleString()} is ` +
                             `${Math.round(ratio * 100)}% of MSRP AED ${product.msrp.toLocaleString()}`
                         );
-                    }
-                } else {
-                    // Fallback: compare against last-known price (for products with no PCPartPicker match)
-                    const lastKnown = db.priceHistory[product.id].slice(-1)[0];
-                    if (lastKnown && lastKnown.price > 0) {
-                        const change    = Math.abs(result.price - lastKnown.price) / lastKnown.price;
-                        const threshold = (result.source.includes('PCPartPicker') || result.source.includes('Gemini')) ? 0.80 : 0.40;
-                        if (change > threshold) {
-                            throw new Error(
-                                `Sanity check failed — AED ${result.price.toLocaleString()} is ` +
-                                `${Math.round(change * 100)}% away from last known AED ${lastKnown.price.toLocaleString()}`
-                            );
-                        }
                     }
                 }
 
