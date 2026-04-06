@@ -14,7 +14,16 @@ async function getOpenAIPrice(productName) {
     const response = await openai.responses.create({
         model: 'gpt-4o',
         tools: [{ type: 'web_search_preview' }],
-        input: `Search for the current retail price of "${productName}" in the UAE in AED from multiple retailers (noon.com, amazon.ae, sharafdg.com, etc). Find prices from 2-3 different stores, calculate the average, and respond with ONLY a JSON object like this: {"price": 3250}. No other text.`
+        input: `Search for the current UAE retail price of the exact product: "${productName}".
+
+Rules:
+- Only match the EXACT model name — do NOT include prices for similar or related variants (e.g. if searching for "RTX 5080", ignore "RTX 5080 Super", "RTX 5070 Ti", etc.)
+- Search noon.com, amazon.ae, and sharafdg.com
+- Use the LOWEST price you find for that exact model (not an average)
+- Ignore bundle deals, combo listings, or used items
+- Respond with ONLY this JSON, no other text: {"price": 3250, "retailer": "noon.ae", "note": "optional short note if uncertain"}
+
+If you cannot find the exact product, respond with: {"price": 0, "retailer": "", "note": "not found"}`
     });
 
     const text = response.output.filter(o => o.type === 'message')
@@ -45,7 +54,10 @@ async function getOpenAIPrice(productName) {
 
     if (!price || price < 200 || price > 500000) throw new Error(`Invalid price from OpenAI: "${text.slice(0, 120)}"`);
 
-    return { price, source: 'OpenAI Web Search' };
+    let retailer = '';
+    try { retailer = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || '{}').retailer || ''; } catch {}
+
+    return { price, source: `OpenAI Web Search${retailer ? ` (${retailer})` : ''}` };
 }
 
 let isTracking = false;
