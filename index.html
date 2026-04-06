@@ -1687,39 +1687,42 @@ Then your analysis. Keep it under 200 words.`;
         if (data.stop_reason === 'tool_use') {
             messages.push({ role: 'assistant', content: data.content });
 
-            const toolBlock = data.content.find(b => b.type === 'tool_use');
-            const query = toolBlock?.input?.query || '';
-            setStatus(`Searching: "${query}"`);
+            const toolBlocks = data.content.filter(b => b.type === 'tool_use');
+            const toolResults = [];
 
-            let searchResult = 'No results found.';
-            try {
-                const params = new URLSearchParams({ q: query, gl: 'ae', hl: 'en' });
-                const sRes  = await fetch(`/api/search?${params}`);
-                const sData = await sRes.json();
+            for (const toolBlock of toolBlocks) {
+                const query = toolBlock?.input?.query || '';
+                setStatus(`Searching: "${query}"`);
 
-                const shopping = (sData.shopping_results || []).slice(0, 5);
-                const organic  = (sData.organic_results  || []).slice(0, 5);
+                let searchResult = 'No results found.';
+                try {
+                    const params = new URLSearchParams({ q: query, gl: 'ae', hl: 'en' });
+                    const sRes  = await fetch(`/api/search?${params}`);
+                    const sData = await sRes.json();
 
-                if (shopping.length) {
-                    searchResult = 'Google Shopping UAE results:\n' +
-                        shopping.map(r => `• ${r.title}: ${r.price} — ${r.source}`).join('\n');
-                } else if (organic.length) {
-                    searchResult = 'Google search results:\n' +
-                        organic.map(r => `• ${r.title}\n  ${r.snippet}`).join('\n\n');
+                    const shopping = (sData.shopping_results || []).slice(0, 5);
+                    const organic  = (sData.organic_results  || []).slice(0, 5);
+
+                    if (shopping.length) {
+                        searchResult = 'Google Shopping UAE results:\n' +
+                            shopping.map(r => `• ${r.title}: ${r.price} — ${r.source}`).join('\n');
+                    } else if (organic.length) {
+                        searchResult = 'Google search results:\n' +
+                            organic.map(r => `• ${r.title}\n  ${r.snippet}`).join('\n\n');
+                    }
+                } catch (e) {
+                    searchResult = `Search failed: ${e.message}`;
                 }
-            } catch (e) {
-                searchResult = `Search failed: ${e.message}`;
-            }
 
-            // Feed results back to Claude
-            messages.push({
-                role: 'user',
-                content: [{
+                toolResults.push({
                     type: 'tool_result',
                     tool_use_id: toolBlock.id,
                     content: searchResult
-                }]
-            });
+                });
+            }
+
+            // Feed all results back to Claude in one message
+            messages.push({ role: 'user', content: toolResults });
 
             setStatus('Analysing prices…');
             continue;
