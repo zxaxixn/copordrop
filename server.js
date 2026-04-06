@@ -5,9 +5,52 @@ const path      = require('path');
 const crypto    = require('crypto');
 const cron      = require('node-cron');
 const { fetchPcppParts, getPcppReference, PCPP_SUPPORTED_PARTS, PCPP_SUPPORTED_REGIONS, USD_TO_AED } = require('./pcpp');
-const { trackAllPrices }                   = require('./gemini-tracker');
-const { scrapeGoogleSearch, scrapeDubizzle } = require('./scrapers');
-const { readDB, writeDB, initMongo }         = require('./db');
+const { trackAllPrices }             = require('./gemini-tracker');
+const { readDB, writeDB, initMongo } = require('./db');
+const OpenAI                         = require('openai');
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// ── OpenAI-powered search helpers ────────────────────────────────────
+function parseOutputText(response) {
+    return response.output
+        .filter(o => o.type === 'message')
+        .flatMap(o => o.content)
+        .filter(c => c.type === 'output_text')
+        .map(c => c.text).join('').trim();
+}
+
+async function openAISearch(query) {
+    const response = await openai.responses.create({
+        model: 'gpt-4o',
+        tools: [{ type: 'web_search_preview' }],
+        input: `Search for: "${query}". Return ONLY a JSON object, no markdown, no extra text:
+{"organic_results":[{"title":"...","link":"...","snippet":"..."}],"shopping_results":[{"title":"...","price":"AED ...","source":"..."}]}
+Up to 5 organic results, up to 5 shopping results. Shopping results must have AED prices from UAE retailers only.`
+    });
+    const text = parseOutputText(response);
+    try {
+        const m = text.match(/\{[\s\S]*\}/);
+        if (m) return JSON.parse(m[0]);
+    } catch {}
+    return { organic_results: [], shopping_results: [] };
+}
+
+async function openAIDubizzle(query) {
+    const response = await openai.responses.create({
+        model: 'gpt-4o',
+        tools: [{ type: 'web_search_preview' }],
+        input: `Search uae.dubizzle.com for used listings of "${query}". Return ONLY a JSON array, no markdown, no extra text:
+[{"title":"...","price":1234,"priceText":"AED 1,234","condition":"Used","url":"..."}]
+Only include listings with AED prices between 200 and 500000. Up to 8 listings.`
+    });
+    const text = parseOutputText(response);
+    try {
+        const m = text.match(/\[[\s\S]*\]/);
+        if (m) return JSON.parse(m[0]);
+    } catch {}
+    return [];
+}
 
 const app = express();
 app.use(express.json());
@@ -149,20 +192,20 @@ app.post('/api/verdicts', (req, res) => {
     res.json({ ok: true });
 });
 
-// ── Google search proxy (replaces SerpAPI) ───────────────
+// ── OpenAI-powered Google search proxy ───────────────────
 app.get('/api/search', async (req, res) => {
     try {
-        const results = await scrapeGoogleSearch(req.query.q || '');
+        const results = await openAISearch(req.query.q || '');
         res.json(results);
     } catch (err) {
         res.status(500).json({ error: err.message, organic_results: [], shopping_results: [] });
     }
 });
 
-// ── Dubizzle used listings ────────────────────────────────
+// ── OpenAI-powered Dubizzle used listings ─────────────────
 app.post('/api/dubizzle', async (req, res) => {
     try {
-        const listings = await scrapeDubizzle(req.body.query || '');
+        const listings = await openAIDubizzle(req.body.query || '');
         res.json(listings);
     } catch (err) {
         res.status(500).json({ error: err.message });
