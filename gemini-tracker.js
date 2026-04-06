@@ -1,36 +1,31 @@
 require('dotenv').config();
+const OpenAI = require('openai');
 const { getPcppPrice, getPcppReference } = require('./pcpp');
 const { readDB, writeDB } = require('./db');
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// ── Gemini Search grounding ──────────────────────────────────────────
-async function getGeminiPrice(productName) {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) throw new Error('No GEMINI_API_KEY');
+// ── OpenAI Web Search ────────────────────────────────────────────────
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    const prompt = `What is the current retail price of "${productName}" in the UAE in AED? Search the web and return ONLY a single number with no text, no currency symbol, no explanation. Example: 3250`;
+async function getOpenAIPrice(productName) {
+    if (!process.env.OPENAI_API_KEY) throw new Error('No OPENAI_API_KEY');
 
-    const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
-        {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                tools:    [{ google_search: {} }]
-            })
-        }
-    );
+    const response = await openai.responses.create({
+        model: 'gpt-4o',
+        tools: [{ type: 'web_search_preview' }],
+        input: `What is the current retail price of "${productName}" in the UAE in AED? Search the web and return ONLY a single number with no text, no currency symbol, no explanation. Example: 3250`
+    });
 
-    const data = await res.json();
-    if (data.error) throw new Error(`Gemini API error: ${data.error.message}`);
+    const text  = response.output.filter(o => o.type === 'message')
+                                 .flatMap(o => o.content)
+                                 .filter(c => c.type === 'output_text')
+                                 .map(c => c.text).join('').trim();
 
-    const text  = data.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim();
     const price = parseInt(text?.replace(/[^0-9]/g, ''), 10);
-    if (!price || price < 200 || price > 500000) throw new Error(`Invalid price from Gemini: "${text}"`);
+    if (!price || price < 200 || price > 500000) throw new Error(`Invalid price from OpenAI: "${text}"`);
 
-    return { price, source: 'Gemini Search' };
+    return { price, source: 'OpenAI Web Search' };
 }
 
 let isTracking = false;
@@ -80,12 +75,12 @@ async function trackAllPrices() {
                     console.log(`      ✗ MSRP lookup: ${e.message}`);
                 }
 
-                // ── 2. Try Gemini Search first (live web, no browser) ─────
+                // ── 2. Try OpenAI Web Search first (live web, no browser) ────
                 try {
-                    result = await getGeminiPrice(product.name);
-                    console.log(`      ✓ Gemini Search: AED ${result.price.toLocaleString()}`);
+                    result = await getOpenAIPrice(product.name);
+                    console.log(`      ✓ OpenAI Search: AED ${result.price.toLocaleString()}`);
                 } catch (e) {
-                    console.log(`      ✗ Gemini: ${e.message}`);
+                    console.log(`      ✗ OpenAI: ${e.message}`);
                 }
 
                 // ── 3. If Gemini failed, fall back to PCPartPicker as price ──
@@ -94,7 +89,7 @@ async function trackAllPrices() {
                     console.log(`      ✓ PCPartPicker fallback: AED ${result.price.toLocaleString()}`);
                 }
 
-                if (!result) throw new Error('Gemini and PCPartPicker both unavailable');
+                if (!result) throw new Error('OpenAI and PCPartPicker both unavailable');
 
                 // ── 4. Validate price ─────────────────────────────────────
                 if (!db.priceHistory) db.priceHistory = {};
