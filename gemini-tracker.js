@@ -5,6 +5,14 @@ const { readDB, writeDB } = require('./db');
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+function parseOutputText(response) {
+    return response.output
+        .filter(o => o.type === 'message')
+        .flatMap(o => o.content)
+        .filter(c => c.type === 'output_text')
+        .map(c => c.text).join('').trim();
+}
+
 // ── OpenAI Web Search ────────────────────────────────────────────────
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -18,18 +26,15 @@ async function getOpenAIPrice(productName) {
 
 Rules:
 - Only match the EXACT model name — do NOT include prices for similar or related variants (e.g. if searching for "RTX 5080", ignore "RTX 5080 Super", "RTX 5070 Ti", etc.)
-- Search noon.com, amazon.ae, and sharafdg.com
+- Search noon.com, amazon.ae, sharafdg.com, microless.com, and any other UAE retailer you find
 - Use the LOWEST price you find for that exact model (not an average)
 - Ignore bundle deals, combo listings, or used items
 - Respond with ONLY this JSON, no other text: {"price": 3250, "retailer": "noon.ae", "note": "optional short note if uncertain"}
 
-If you cannot find the exact product, respond with: {"price": 0, "retailer": "", "note": "not found"}`
+If you cannot find the exact product on any UAE retailer, respond with: {"price": 0, "retailer": "", "note": "not found"}`
     });
 
-    const text = response.output.filter(o => o.type === 'message')
-                                .flatMap(o => o.content)
-                                .filter(c => c.type === 'output_text')
-                                .map(c => c.text).join('').trim();
+    const text = parseOutputText(response);
 
     // Try JSON parse first
     let price;
@@ -50,6 +55,23 @@ If you cannot find the exact product, respond with: {"price": 0, "retailer": "",
             nums.sort((a, b) => a - b);
             price = nums[Math.floor(nums.length / 2)];
         }
+    }
+
+    // If exact search returned "not found", retry with a broader query
+    if (!price || price === 0) {
+        const retry = await openai.responses.create({
+            model: 'gpt-4o',
+            tools: [{ type: 'web_search_preview' }],
+            input: `Search for "${productName}" price in UAE AED. Find any UAE retailer selling this product right now. Use the lowest price found. Respond with ONLY: {"price": 1234, "retailer": "site name"}`
+        });
+        const retryText = parseOutputText(retry);
+        try {
+            const m = retryText.match(/\{[\s\S]*\}/);
+            if (m) {
+                const parsed = JSON.parse(m[0]);
+                price = parseInt(parsed.price, 10);
+            }
+        } catch {}
     }
 
     if (!price || price < 200 || price > 500000) throw new Error(`Invalid price from OpenAI: "${text.slice(0, 120)}"`);
