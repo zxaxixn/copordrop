@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { getPcppPrice } = require('./pcpp');
+const { getPcppPrice, getPcppReference } = require('./pcpp');
 const { readDB, writeDB } = require('./db');
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -68,7 +68,19 @@ async function trackAllPrices() {
             try {
                 let result = null;
 
-                // ── 1. Try Gemini Search first (live web, no browser) ─────
+                // ── 1. Fetch PCPartPicker reference → MSRP anchor + price fallback ──
+                let msrpRef = null;
+                try {
+                    msrpRef = await getPcppReference(product.name, product.category);
+                    if (msrpRef) {
+                        product.msrp = msrpRef.aedEquiv;
+                        console.log(`      📌 MSRP (PCPartPicker): AED ${msrpRef.aedEquiv.toLocaleString()}`);
+                    }
+                } catch (e) {
+                    console.log(`      ✗ MSRP lookup: ${e.message}`);
+                }
+
+                // ── 2. Try Gemini Search first (live web, no browser) ─────
                 try {
                     result = await getGeminiPrice(product.name);
                     console.log(`      ✓ Gemini Search: AED ${result.price.toLocaleString()}`);
@@ -76,35 +88,39 @@ async function trackAllPrices() {
                     console.log(`      ✗ Gemini: ${e.message}`);
                 }
 
-                // ── 2. Try PCPartPicker (no browser, fast) ────────────────
-                if (!result) {
-                    try {
-                        result = await getPcppPrice(product.name, product.category);
-                        console.log(`      ✓ PCPartPicker: ${result.source}`);
-                    } catch (e) {
-                        console.log(`      ✗ PCPartPicker: ${e.message}`);
-                    }
+                // ── 3. If Gemini failed, fall back to PCPartPicker as price ──
+                if (!result && msrpRef) {
+                    result = { price: msrpRef.aedEquiv, source: `PCPartPicker (US $${msrpRef.usdPrice} → AED)` };
+                    console.log(`      ✓ PCPartPicker fallback: AED ${result.price.toLocaleString()}`);
                 }
 
-                // ── 3. Both failed — skip this product ────────────────────
-                if (!result) {
-                    throw new Error('Gemini and PCPartPicker both unavailable');
-                }
+                if (!result) throw new Error('Gemini and PCPartPicker both unavailable');
 
-                // ── 3. Sanity check ───────────────────────────────────────
+                // ── 4. Validate price ─────────────────────────────────────
                 if (!db.priceHistory) db.priceHistory = {};
                 if (!db.priceHistory[product.id]) db.priceHistory[product.id] = [];
-                const lastKnown = db.priceHistory[product.id].slice(-1)[0];
-                if (lastKnown && lastKnown.price > 0) {
-                    const change = Math.abs(result.price - lastKnown.price) / lastKnown.price;
-                    // Gemini + PCPartPicker are trusted sources — allow up to 80% swing
-                    // UAE scrapers (Noon etc.) allow 40%
-                    const threshold = (result.source.includes('PCPartPicker') || result.source.includes('Gemini')) ? 0.80 : 0.40;
-                    if (change > threshold) {
+
+                if (product.msrp) {
+                    // Primary check: price must be within 50%–250% of MSRP
+                    const ratio = result.price / product.msrp;
+                    if (ratio < 0.5 || ratio > 2.5) {
                         throw new Error(
-                            `Sanity check failed — AED ${result.price.toLocaleString()} is ` +
-                            `${Math.round(change * 100)}% away from last known AED ${lastKnown.price.toLocaleString()}`
+                            `MSRP check failed — AED ${result.price.toLocaleString()} is ` +
+                            `${Math.round(ratio * 100)}% of MSRP AED ${product.msrp.toLocaleString()}`
                         );
+                    }
+                } else {
+                    // Fallback: compare against last-known price (for products with no PCPartPicker match)
+                    const lastKnown = db.priceHistory[product.id].slice(-1)[0];
+                    if (lastKnown && lastKnown.price > 0) {
+                        const change    = Math.abs(result.price - lastKnown.price) / lastKnown.price;
+                        const threshold = (result.source.includes('PCPartPicker') || result.source.includes('Gemini')) ? 0.80 : 0.40;
+                        if (change > threshold) {
+                            throw new Error(
+                                `Sanity check failed — AED ${result.price.toLocaleString()} is ` +
+                                `${Math.round(change * 100)}% away from last known AED ${lastKnown.price.toLocaleString()}`
+                            );
+                        }
                     }
                 }
 
