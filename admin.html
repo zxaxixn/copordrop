@@ -209,6 +209,7 @@
         <div class="topbar-logo">CopOrDrop<span>.ae</span> Admin</div>
         <div class="topbar-right">
             <a href="/" style="color:var(--subtext);font-size:0.82rem;text-decoration:none;" target="_blank">← View Site</a>
+            <button class="logout-btn" id="seedBtn" onclick="seedMsrp()" style="border-color:var(--orange);color:var(--orange);">Seed Ref Prices</button>
             <button class="logout-btn" id="trackBtn" onclick="trackPrices()" style="border-color:var(--accent);color:var(--accent);">Track Prices</button>
             <button class="logout-btn" onclick="logout()">Sign Out</button>
         </div>
@@ -260,6 +261,7 @@
                         <th>Product</th>
                         <th>Category</th>
                         <th>Price (AED)</th>
+                        <th>Ref Price</th>
                         <th>Last Checked</th>
                         <th>Actions</th>
                     </tr>
@@ -309,6 +311,10 @@
         <div class="field">
             <label>Price (AED)</label>
             <input type="number" id="editPrice" min="0">
+        </div>
+        <div class="field">
+            <label>Reference Price — AED (used for sanity checks)</label>
+            <input type="number" id="editManualMsrp" min="0" placeholder="e.g. 5400 — leave blank to disable">
         </div>
         <div class="field">
             <label>Date Checked</label>
@@ -390,7 +396,7 @@ function renderTable(products) {
     document.getElementById('countBadge').textContent = `${products.length} product${products.length !== 1 ? 's' : ''}`;
 
     if (!products.length) {
-        tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div>📦</div>No products yet. Add one above.</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div>📦</div>No products yet. Add one above.</div></td></tr>';
         return;
     }
 
@@ -401,10 +407,14 @@ function renderTable(products) {
         const expBadge = p.experimental
             ? '<span style="font-size:0.68rem;color:var(--orange);font-weight:700;margin-left:6px;">EXP</span>'
             : '';
+        const refPrice = p.manualMsrp
+            ? `<span style="color:var(--subtext);font-family:'Space Grotesk',sans-serif;font-weight:600;">${Number(p.manualMsrp).toLocaleString()}</span>`
+            : '<span style="color:var(--subtext);font-size:0.8rem;opacity:0.5;">not set</span>';
         return `<tr>
             <td style="font-weight:600;">${esc(p.name)}${expBadge}</td>
             <td><span class="cat-pill">${esc(p.category)}</span></td>
             <td class="price-val">${p.price ? Number(p.price).toLocaleString() + ' AED' : '—'}</td>
+            <td>${refPrice}</td>
             <td class="date-val">${date}</td>
             <td>
                 <div class="action-btns">
@@ -486,11 +496,12 @@ async function reloadTable() {
 function openEdit(id) {
     const p = _products.find(x => x.id === id);
     if (!p) return;
-    document.getElementById('editId').value       = p.id;
-    document.getElementById('editName').value     = p.name;
-    document.getElementById('editCategory').value = p.category;
-    document.getElementById('editPrice').value    = p.price;
-    document.getElementById('editDate').value     = p.checkedAt
+    document.getElementById('editId').value          = p.id;
+    document.getElementById('editName').value        = p.name;
+    document.getElementById('editCategory').value    = p.category;
+    document.getElementById('editPrice').value       = p.price;
+    document.getElementById('editManualMsrp').value  = p.manualMsrp || '';
+    document.getElementById('editDate').value        = p.checkedAt
         ? new Date(p.checkedAt).toISOString().slice(0, 10)
         : new Date().toISOString().slice(0, 10);
     document.getElementById('editModal').classList.add('open');
@@ -501,11 +512,12 @@ function closeEdit() {
 }
 
 async function saveEdit() {
-    const id       = document.getElementById('editId').value;
-    const name     = document.getElementById('editName').value.trim();
-    const category = document.getElementById('editCategory').value;
-    const price    = document.getElementById('editPrice').value;
-    const date     = document.getElementById('editDate').value;
+    const id          = document.getElementById('editId').value;
+    const name        = document.getElementById('editName').value.trim();
+    const category    = document.getElementById('editCategory').value;
+    const price       = document.getElementById('editPrice').value;
+    const manualMsrp  = document.getElementById('editManualMsrp').value;
+    const date        = document.getElementById('editDate').value;
     if (!name || !price) { alert('Name and price are required.'); return; }
 
     try {
@@ -514,6 +526,7 @@ async function saveEdit() {
             headers: { 'Content-Type': 'application/json', 'x-admin-token': TOKEN },
             body:    JSON.stringify({
                 name, category, price: Number(price),
+                manualMsrp: manualMsrp !== '' ? Number(manualMsrp) : '',
                 checkedAt: date ? new Date(date).toISOString() : new Date().toISOString()
             })
         });
@@ -604,6 +617,29 @@ async function openHistory(id, name) {
 
 function closeHistory() {
     document.getElementById('historyModal').classList.remove('open');
+}
+
+// ── Seed reference prices from current prices ─────────────
+async function seedMsrp() {
+    const btn = document.getElementById('seedBtn');
+    if (!confirm('Set reference price = current price for all products that don\'t have one yet?')) return;
+    btn.disabled = true;
+    btn.textContent = 'Seeding…';
+    try {
+        const r = await fetch('/api/admin/seed-msrp', {
+            method: 'POST',
+            headers: { 'x-admin-token': TOKEN }
+        });
+        const d = await r.json();
+        if (!r.ok) { alert('Error: ' + (d.error || 'Unknown error')); return; }
+        alert(`✅ Seeded ${d.seeded} products with reference prices.`);
+        await reloadTable();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Seed Ref Prices';
+    }
 }
 
 // ── Track Prices via Gemini ───────────────────────────────

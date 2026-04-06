@@ -83,17 +83,12 @@ async function trackAllPrices() {
             try {
                 let result = null;
 
-                // ── 1. Fetch PCPartPicker reference → MSRP anchor + price fallback ──
+                // ── 1. Fetch PCPartPicker reference → price fallback only ────
                 let msrpRef = null;
                 try {
                     msrpRef = await getPcppReference(product.name, product.category);
-                    if (msrpRef) {
-                        product.msrp = msrpRef.aedEquiv;
-                        console.log(`      📌 MSRP (PCPartPicker): AED ${msrpRef.aedEquiv.toLocaleString()}`);
-                    }
-                } catch (e) {
-                    console.log(`      ✗ MSRP lookup: ${e.message}`);
-                }
+                    if (msrpRef) console.log(`      📌 PCPP ref: AED ${msrpRef.aedEquiv.toLocaleString()}`);
+                } catch (e) { /* silent — PCPP is optional */ }
 
                 // ── 2. Try OpenAI Web Search first (live web, no browser) ────
                 try {
@@ -103,7 +98,7 @@ async function trackAllPrices() {
                     console.log(`      ✗ OpenAI: ${e.message}`);
                 }
 
-                // ── 3. If Gemini failed, fall back to PCPartPicker as price ──
+                // ── 3. Fall back to PCPartPicker as price if OpenAI failed ──
                 if (!result && msrpRef) {
                     result = { price: msrpRef.aedEquiv, source: `PCPartPicker (US $${msrpRef.usdPrice} → AED)` };
                     console.log(`      ✓ PCPartPicker fallback: AED ${result.price.toLocaleString()}`);
@@ -111,19 +106,20 @@ async function trackAllPrices() {
 
                 if (!result) throw new Error('OpenAI and PCPartPicker both unavailable');
 
-                // ── 4. Validate price ─────────────────────────────────────
+                // ── 4. Validate against manual reference price ────────────
                 if (!db.priceHistory) db.priceHistory = {};
                 if (!db.priceHistory[product.id]) db.priceHistory[product.id] = [];
 
-                if (product.msrp) {
-                    // Sanity check: price must be within 30%–400% of MSRP
-                    const ratio = result.price / product.msrp;
+                const anchor = product.manualMsrp || (msrpRef ? msrpRef.aedEquiv : null);
+                if (anchor) {
+                    const ratio = result.price / anchor;
                     if (ratio < 0.3 || ratio > 4.0) {
                         throw new Error(
-                            `MSRP check failed — AED ${result.price.toLocaleString()} is ` +
-                            `${Math.round(ratio * 100)}% of MSRP AED ${product.msrp.toLocaleString()}`
+                            `Price check failed — AED ${result.price.toLocaleString()} is ` +
+                            `${Math.round(ratio * 100)}% of ref AED ${anchor.toLocaleString()}`
                         );
                     }
+                    if (product.manualMsrp) console.log(`      📌 Ref price check passed (AED ${anchor.toLocaleString()})`);
                 }
 
                 // ── 4. Save ───────────────────────────────────────────────

@@ -88,13 +88,28 @@ app.put('/api/admin/products/:id', authRequired, (req, res) => {
     const db  = readDB();
     const idx = db.products.findIndex(p => p.id === req.params.id);
     if (idx === -1) return res.status(404).json({ error: 'Not found' });
-    const { name, category, price, checkedAt } = req.body;
-    if (name      !== undefined) db.products[idx].name      = name.trim();
-    if (category  !== undefined) db.products[idx].category  = category.trim();
-    if (price     !== undefined) db.products[idx].price     = Number(price);
-    if (checkedAt !== undefined) db.products[idx].checkedAt = checkedAt;
+    const { name, category, price, checkedAt, manualMsrp } = req.body;
+    if (name        !== undefined) db.products[idx].name        = name.trim();
+    if (category    !== undefined) db.products[idx].category    = category.trim();
+    if (price       !== undefined) db.products[idx].price       = Number(price);
+    if (checkedAt   !== undefined) db.products[idx].checkedAt   = checkedAt;
+    if (manualMsrp  !== undefined) db.products[idx].manualMsrp  = manualMsrp === '' ? null : Number(manualMsrp);
     writeDB(db);
     res.json(db.products[idx]);
+});
+
+// ── Admin: seed manualMsrp from current prices ────────────
+app.post('/api/admin/seed-msrp', authRequired, (req, res) => {
+    const db = readDB();
+    let seeded = 0;
+    for (const p of db.products) {
+        if (!p.manualMsrp && p.price) {
+            p.manualMsrp = p.price;
+            seeded++;
+        }
+    }
+    writeDB(db);
+    res.json({ ok: true, seeded });
 });
 
 app.delete('/api/admin/products/:id', authRequired, (req, res) => {
