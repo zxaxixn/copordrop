@@ -209,6 +209,8 @@
         <div class="topbar-logo">CopOrDrop<span>.ae</span> Admin</div>
         <div class="topbar-right">
             <a href="/" style="color:var(--subtext);font-size:0.82rem;text-decoration:none;" target="_blank">← View Site</a>
+            <button class="logout-btn" id="clearHistoryBtn" onclick="clearHistory()" style="border-color:var(--red);color:var(--red);">Clear History</button>
+            <button class="logout-btn" id="clearRefBtn" onclick="clearRefPrices()" style="border-color:var(--red);color:var(--red);">Clear Ref Prices</button>
             <button class="logout-btn" id="seedBtn" onclick="seedMsrp()" style="border-color:var(--orange);color:var(--orange);">Seed Ref Prices</button>
             <button class="logout-btn" id="trackBtn" onclick="trackPrices()" style="border-color:var(--accent);color:var(--accent);">Track Prices</button>
             <button class="logout-btn" onclick="logout()">Sign Out</button>
@@ -617,6 +619,49 @@ async function openHistory(id, name) {
 
 function closeHistory() {
     document.getElementById('historyModal').classList.remove('open');
+}
+
+// ── Clear all reference prices ────────────────────────────
+async function clearRefPrices() {
+    if (!confirm('Clear ALL reference prices from every product? This cannot be undone.')) return;
+    const btn = document.getElementById('clearRefBtn');
+    btn.disabled = true;
+    btn.textContent = 'Clearing…';
+    try {
+        const r = await fetch('/api/admin/clear-ref-prices', {
+            method: 'POST',
+            headers: { 'x-admin-token': TOKEN }
+        });
+        if (!r.ok) { alert('Error clearing ref prices'); return; }
+        alert('✅ All reference prices cleared.');
+        await reloadTable();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Clear Ref Prices';
+    }
+}
+
+// ── Clear all price history ───────────────────────────────
+async function clearHistory() {
+    if (!confirm('Clear ALL price history for every product? This cannot be undone.')) return;
+    const btn = document.getElementById('clearHistoryBtn');
+    btn.disabled = true;
+    btn.textContent = 'Clearing…';
+    try {
+        const r = await fetch('/api/admin/clear-history', {
+            method: 'POST',
+            headers: { 'x-admin-token': TOKEN }
+        });
+        if (!r.ok) { alert('Error clearing history'); return; }
+        alert('✅ All price history cleared.');
+    } catch (e) {
+        alert('Error: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Clear History';
+    }
 }
 
 // ── Seed reference prices from current prices ─────────────

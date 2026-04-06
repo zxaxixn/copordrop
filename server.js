@@ -141,6 +141,22 @@ app.put('/api/admin/products/:id', authRequired, (req, res) => {
     res.json(db.products[idx]);
 });
 
+// ── Admin: clear all reference prices ────────────────────
+app.post('/api/admin/clear-ref-prices', authRequired, (req, res) => {
+    const db = readDB();
+    for (const p of db.products) delete p.manualMsrp;
+    writeDB(db);
+    res.json({ ok: true });
+});
+
+// ── Admin: clear all price history ───────────────────────
+app.post('/api/admin/clear-history', authRequired, (req, res) => {
+    const db = readDB();
+    db.priceHistory = {};
+    writeDB(db);
+    res.json({ ok: true });
+});
+
 // ── Admin: seed manualMsrp from current prices ────────────
 app.post('/api/admin/seed-msrp', authRequired, (req, res) => {
     const db = readDB();
