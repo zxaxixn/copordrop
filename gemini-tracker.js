@@ -109,7 +109,7 @@ function backfillHistory(price) {
     return history;
 }
 
-async function trackAllPrices() {
+async function trackAllPrices(singleProductId = null) {
     if (isTracking) {
         console.log('[Tracker] Already running, skipping.');
         return { updated: 0, total: 0, errors: [], skipped: true };
@@ -120,10 +120,18 @@ async function trackAllPrices() {
     const today = new Date().toISOString().slice(0, 10);
     let updated = 0;
     const errors = [];
-    console.log(`[${new Date().toISOString()}] Price tracker — ${db.products.length} products`);
+
+    const products = singleProductId
+        ? db.products.filter(p => p.id === singleProductId)
+        : db.products;
+
+    if (singleProductId && !products.length)
+        return { updated: 0, total: 0, errors: [{ product: singleProductId, error: 'Product not found' }] };
+
+    console.log(`[${new Date().toISOString()}] Price tracker — ${products.length} product(s)`);
 
     try {
-        for (const product of db.products) {
+        for (const product of products) {
             console.log(`  → ${product.name} …`);
             try {
                 let result = null;
@@ -215,4 +223,7 @@ if (require.main === module) {
     trackAllPrices().catch(err => { console.error(err.message); process.exit(1); });
 }
 
-module.exports = { trackAllPrices };
+module.exports = {
+    trackAllPrices,
+    trackProduct: (id) => trackAllPrices(id)
+};

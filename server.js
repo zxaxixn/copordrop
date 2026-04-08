@@ -5,7 +5,7 @@ const path      = require('path');
 const crypto    = require('crypto');
 const cron      = require('node-cron');
 const { fetchPcppParts, getPcppReference, PCPP_SUPPORTED_PARTS, PCPP_SUPPORTED_REGIONS, USD_TO_AED } = require('./pcpp');
-const { trackAllPrices }             = require('./gemini-tracker');
+const { trackAllPrices, trackProduct } = require('./gemini-tracker');
 const { readDB, writeDB, initMongo } = require('./db');
 const OpenAI                         = require('openai');
 
@@ -354,6 +354,17 @@ app.get('/admin', (req, res) => {
 app.post('/api/admin/track-prices', authRequired, (req, res) => {
     res.json({ ok: true, message: 'Price tracking started in background' });
     trackAllPrices().catch(console.error);
+});
+
+// ── Admin: track a single product ────────────────────────
+app.post('/api/admin/track-product/:id', authRequired, async (req, res) => {
+    try {
+        const result = await trackProduct(req.params.id);
+        if (result.skipped) return res.status(409).json({ error: 'Full price tracking is already running — try again shortly.' });
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ── Daily Gemini price tracker — 6:00 AM UAE time (02:00 UTC) ──

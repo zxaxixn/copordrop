@@ -139,6 +139,14 @@
             transition: border-color 0.18s, color 0.18s;
         }
         .btn-delete:hover { border-color: var(--red); color: var(--red); }
+        .btn-track {
+            background: none; border: 1px solid var(--border); color: var(--subtext);
+            font-family: 'Space Grotesk', sans-serif; font-size: 0.75rem; font-weight: 600;
+            padding: 5px 11px; border-radius: var(--radius-sm); cursor: pointer;
+            transition: border-color 0.18s, color 0.18s;
+        }
+        .btn-track:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-track:disabled { opacity: 0.4; cursor: not-allowed; }
         .empty-state {
             text-align: center; padding: 48px 20px;
             color: var(--subtext); font-size: 0.9rem;
@@ -420,6 +428,7 @@ function renderTable(products) {
             <td class="date-val">${date}</td>
             <td>
                 <div class="action-btns">
+                    <button class="btn-track" id="track-btn-${p.id}" onclick="trackSingle('${p.id}')">Track</button>
                     <button class="btn-edit" onclick="openHistory('${p.id}', '${esc(p.name)}')">History</button>
                     <button class="btn-edit" onclick="openEdit('${p.id}')">Edit</button>
                     <button class="btn-delete" onclick="deleteProduct('${p.id}', '${esc(p.name)}')">Delete</button>
@@ -684,6 +693,43 @@ async function seedMsrp() {
     } finally {
         btn.disabled = false;
         btn.textContent = 'Seed Ref Prices';
+    }
+}
+
+// ── Track single product ──────────────────────────────────
+async function trackSingle(id) {
+    const btn = document.getElementById(`track-btn-${id}`);
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+        const r = await fetch(`/api/admin/track-product/${id}`, {
+            method: 'POST',
+            headers: { 'x-admin-token': TOKEN }
+        });
+        const d = await r.json();
+        if (!r.ok) {
+            alert('❌ ' + (d.error || 'Tracking failed'));
+            return;
+        }
+        if (d.errors?.length) {
+            alert(`❌ Failed: ${d.errors[0].error}`);
+        } else {
+            btn.textContent = '✓';
+            btn.style.color = 'var(--accent)';
+            btn.style.borderColor = 'var(--accent)';
+            setTimeout(() => {
+                btn.textContent = 'Track';
+                btn.style.color = '';
+                btn.style.borderColor = '';
+            }, 2000);
+            await reloadTable();
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        if (btn.textContent === '…') btn.textContent = 'Track';
     }
 }
 
