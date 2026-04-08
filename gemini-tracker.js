@@ -5,6 +5,13 @@ const { readDB, writeDB } = require('./db');
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+function withTimeout(promise, ms, label) {
+    const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`OpenAI search timed out after ${ms / 1000}s for: ${label}`)), ms)
+    );
+    return Promise.race([promise, timeout]);
+}
+
 function parseOutputText(response) {
     return response.output
         .filter(o => o.type === 'message')
@@ -21,7 +28,7 @@ async function getOpenAIPrice(productName) {
 
     const today = new Date().toLocaleDateString('en-AE', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    const response = await openai.responses.create({
+    const response = await withTimeout(openai.responses.create({
         model: 'gpt-4o',
         tools: [{ type: 'web_search_preview', search_context_size: 'high' }],
         input: `Today is ${today}. Search for the current ${today} UAE retail price of the exact product: "${productName}".
@@ -32,10 +39,11 @@ Rules:
 - Use the LOWEST price you find for that exact model (not an average)
 - Ignore bundle deals, combo listings, or used items
 - CRITICAL: Only use prices that are live and current as of ${today}. Do NOT use cached results, training data, or prices from 2024 or early 2025 — those are outdated.
+- If the product is RAM (e.g. "DDR5 32GB" or "DDR4 16GB"), the price MUST be for the complete kit as listed — a "32GB" kit means a dual-channel 2×16GB package. Do NOT return the price of a single stick.
 - Respond with ONLY this JSON, no other text: {"price": 3250, "retailer": "noon.ae", "note": "optional short note if uncertain"}
 
 If you cannot find the exact product on any UAE retailer, respond with: {"price": 0, "retailer": "", "note": "not found"}`
-    });
+    }), 45000, productName);
 
     const text = parseOutputText(response);
 
@@ -62,11 +70,11 @@ If you cannot find the exact product on any UAE retailer, respond with: {"price"
 
     // If exact search returned "not found", retry with a broader query
     if (!price || price === 0) {
-        const retry = await openai.responses.create({
+        const retry = await withTimeout(openai.responses.create({
             model: 'gpt-4o',
             tools: [{ type: 'web_search_preview', search_context_size: 'high' }],
             input: `Today is ${today}. Search for the current price of "${productName}" in UAE AED as of ${today}. Find any UAE retailer selling this product right now — do not use old cached prices from 2024 or early 2025. Use the lowest current price found. Respond with ONLY: {"price": 1234, "retailer": "site name"}`
-        });
+        }), 45000, productName);
         const retryText = parseOutputText(retry);
         try {
             const m = retryText.match(/\{[\s\S]*\}/);
@@ -143,20 +151,28 @@ async function trackAllPrices() {
 
                 if (!result) throw new Error('OpenAI and PCPartPicker both unavailable');
 
-                // ── 4. Validate against manual reference price ────────────
+                // ── 4. Validate against reference price ──────────────────
                 if (!db.priceHistory) db.priceHistory = {};
                 if (!db.priceHistory[product.id]) db.priceHistory[product.id] = [];
 
-                const anchor = product.manualMsrp || (msrpRef ? msrpRef.aedEquiv : null);
+                // Anchor priority: manualMsrp → PCPP reference → existing DB price (last resort)
+                const anchor = product.manualMsrp
+                    || (msrpRef ? msrpRef.aedEquiv : null)
+                    || (product.price > 0 ? product.price : null);
+
                 if (anchor) {
                     const ratio = result.price / anchor;
-                    if (ratio < 0.3 || ratio > 4.0) {
+                    // Tighter range for DB-price fallback anchor (price shouldn't halve overnight)
+                    const [minRatio, maxRatio] = product.manualMsrp || msrpRef ? [0.3, 4.0] : [0.5, 2.0];
+                    if (ratio < minRatio || ratio > maxRatio) {
                         throw new Error(
                             `Price check failed — AED ${result.price.toLocaleString()} is ` +
-                            `${Math.round(ratio * 100)}% of ref AED ${anchor.toLocaleString()}`
+                            `${Math.round(ratio * 100)}% of ref AED ${anchor.toLocaleString()}` +
+                            ((!product.manualMsrp && !msrpRef) ? ' (anchored to previous DB price)' : '')
                         );
                     }
                     if (product.manualMsrp) console.log(`      📌 Ref price check passed (AED ${anchor.toLocaleString()})`);
+                    else if (!msrpRef) console.log(`      📌 DB price anchor check passed (AED ${anchor.toLocaleString()})`);
                 }
 
                 // ── 4. Save ───────────────────────────────────────────────
