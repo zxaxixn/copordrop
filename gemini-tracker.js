@@ -122,8 +122,6 @@ async function trackAllPrices(singleProductId = null) {
         console.log('[Tracker] Already running, skipping.');
         return { updated: 0, total: 0, errors: [], skipped: true };
     }
-    isTracking = true;
-    cancelRequested = false;
 
     const db    = readDB();
     const today = new Date().toISOString().slice(0, 10);
@@ -136,6 +134,9 @@ async function trackAllPrices(singleProductId = null) {
 
     if (singleProductId && !products.length)
         return { updated: 0, total: 0, errors: [{ product: singleProductId, error: 'Product not found' }] };
+
+    isTracking = true;
+    cancelRequested = false;
 
     console.log(`[${new Date().toISOString()}] Price tracker — ${products.length} product(s)`);
 
@@ -205,6 +206,7 @@ async function trackAllPrices(singleProductId = null) {
 
                 console.log(`      ✅ AED ${result.price.toLocaleString()} (${result.source})`);
                 updated++;
+                writeDB(db); // save progress after every successful update
 
             } catch (e) {
                 console.log(`      ❌ FAILED — ${e.message}`);
@@ -223,9 +225,8 @@ async function trackAllPrices(singleProductId = null) {
         cancelRequested = false;
     }
 
-    writeDB(db);
     console.log(`\n✅ Done. ${updated}/${products.length} updated.\n`);
-    return { updated, total: db.products.length, errors };
+    return { updated, total: products.length, errors };
 }
 
 if (require.main === module) {
