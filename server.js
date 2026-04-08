@@ -5,7 +5,7 @@ const path      = require('path');
 const crypto    = require('crypto');
 const cron      = require('node-cron');
 const { fetchPcppParts, getPcppReference, PCPP_SUPPORTED_PARTS, PCPP_SUPPORTED_REGIONS, USD_TO_AED } = require('./pcpp');
-const { trackAllPrices, trackProduct } = require('./gemini-tracker');
+const { trackAllPrices, trackProduct, cancelTracking, getTrackingStatus } = require('./gemini-tracker');
 const { readDB, writeDB, initMongo } = require('./db');
 const OpenAI                         = require('openai');
 
@@ -365,6 +365,17 @@ app.get('/admin', (req, res) => {
 app.post('/api/admin/track-prices', authRequired, (req, res) => {
     res.json({ ok: true, message: 'Price tracking started in background' });
     trackAllPrices().catch(console.error);
+});
+
+// ── Admin: cancel running tracker ────────────────────────
+app.post('/api/admin/cancel-tracking', authRequired, (req, res) => {
+    cancelTracking();
+    res.json({ ok: true, wasTracking: getTrackingStatus().isTracking });
+});
+
+// ── Admin: tracking status ────────────────────────────────
+app.get('/api/admin/tracking-status', authRequired, (req, res) => {
+    res.json(getTrackingStatus());
 });
 
 // ── Admin: track a single product ────────────────────────

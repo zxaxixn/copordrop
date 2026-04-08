@@ -94,6 +94,14 @@ If you cannot find the exact product on any UAE retailer, respond with: {"price"
 }
 
 let isTracking = false;
+let cancelRequested = false;
+
+function cancelTracking() {
+    if (isTracking) {
+        cancelRequested = true;
+        console.log('[Tracker] Cancel requested — will stop after current product.');
+    }
+}
 
 // Generate weekly price history from Jan 5 2026 to yesterday using current price as baseline
 function backfillHistory(price) {
@@ -115,6 +123,7 @@ async function trackAllPrices(singleProductId = null) {
         return { updated: 0, total: 0, errors: [], skipped: true };
     }
     isTracking = true;
+    cancelRequested = false;
 
     const db    = readDB();
     const today = new Date().toISOString().slice(0, 10);
@@ -203,13 +212,19 @@ async function trackAllPrices(singleProductId = null) {
             }
 
             await sleep(2000);
+
+            if (cancelRequested) {
+                console.log('[Tracker] Cancelled by user.');
+                break;
+            }
         }
     } finally {
         isTracking = false;
+        cancelRequested = false;
     }
 
     writeDB(db);
-    console.log(`\n✅ Done. ${updated}/${db.products.length} updated.\n`);
+    console.log(`\n✅ Done. ${updated}/${products.length} updated.\n`);
     return { updated, total: db.products.length, errors };
 }
 
@@ -219,5 +234,7 @@ if (require.main === module) {
 
 module.exports = {
     trackAllPrices,
-    trackProduct: (id) => trackAllPrices(id)
+    trackProduct: (id) => trackAllPrices(id),
+    cancelTracking,
+    getTrackingStatus: () => ({ isTracking, cancelRequested })
 };

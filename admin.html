@@ -221,6 +221,7 @@
             <button class="logout-btn" id="clearHistoryBtn" onclick="clearHistory()" style="border-color:var(--red);color:var(--red);">Clear History</button>
             <button class="logout-btn" id="clearRefBtn" onclick="clearRefPrices()" style="border-color:var(--red);color:var(--red);">Clear Ref Prices</button>
             <button class="logout-btn" id="seedBtn" onclick="seedMsrp()" style="border-color:var(--orange);color:var(--orange);">Seed Ref Prices</button>
+            <button class="logout-btn" id="stopBtn" onclick="stopTracking()" style="display:none;border-color:var(--red);color:var(--red);">⏹ Stop</button>
             <button class="logout-btn" id="trackBtn" onclick="trackPrices()" style="border-color:var(--accent);color:var(--accent);">Track Prices</button>
             <button class="logout-btn" onclick="logout()">Sign Out</button>
         </div>
@@ -394,11 +395,23 @@ function logout() {
 }
 
 // ── Show app ──────────────────────────────────────────────
-function showApp(products) {
+async function showApp(products) {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('appScreen').style.display = 'block';
     _products = products;
     renderTable(products);
+    // Show stop button if tracking is already in progress
+    try {
+        const r = await fetch('/api/admin/tracking-status', { headers: { 'x-admin-token': TOKEN } });
+        if (r.ok) {
+            const s = await r.json();
+            if (s.isTracking) {
+                document.getElementById('stopBtn').style.display = '';
+                document.getElementById('trackBtn').disabled = true;
+                document.getElementById('trackBtn').textContent = 'Tracking…';
+            }
+        }
+    } catch (e) {}
 }
 
 // ── Render table ──────────────────────────────────────────
@@ -756,11 +769,13 @@ async function trackSingle(id) {
     }
 }
 
-// ── Track Prices via Gemini ───────────────────────────────
+// ── Track Prices ──────────────────────────────────────────
 async function trackPrices() {
-    const btn = document.getElementById('trackBtn');
+    const btn     = document.getElementById('trackBtn');
+    const stopBtn = document.getElementById('stopBtn');
     btn.disabled = true;
     btn.textContent = 'Tracking…';
+    stopBtn.style.display = '';
     try {
         const r = await fetch('/api/admin/track-prices', {
             method:  'POST',
@@ -775,6 +790,25 @@ async function trackPrices() {
     } finally {
         btn.disabled = false;
         btn.textContent = 'Track Prices';
+        stopBtn.style.display = 'none';
+    }
+}
+
+// ── Stop Tracking ─────────────────────────────────────────
+async function stopTracking() {
+    const stopBtn = document.getElementById('stopBtn');
+    stopBtn.disabled = true;
+    stopBtn.textContent = 'Stopping…';
+    try {
+        await fetch('/api/admin/cancel-tracking', {
+            method: 'POST',
+            headers: { 'x-admin-token': TOKEN }
+        });
+        stopBtn.textContent = 'Stopping after current…';
+    } catch (e) {
+        alert('Error: ' + e.message);
+    } finally {
+        stopBtn.disabled = false;
     }
 }
 </script>
