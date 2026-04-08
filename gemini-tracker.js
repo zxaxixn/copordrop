@@ -19,16 +19,19 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 async function getOpenAIPrice(productName) {
     if (!process.env.OPENAI_API_KEY) throw new Error('No OPENAI_API_KEY');
 
+    const today = new Date().toLocaleDateString('en-AE', { day: 'numeric', month: 'long', year: 'numeric' });
+
     const response = await openai.responses.create({
         model: 'gpt-4o',
-        tools: [{ type: 'web_search_preview' }],
-        input: `Search for the current UAE retail price of the exact product: "${productName}".
+        tools: [{ type: 'web_search_preview', search_context_size: 'high' }],
+        input: `Today is ${today}. Search for the current ${today} UAE retail price of the exact product: "${productName}".
 
 Rules:
 - Only match the EXACT model name — do NOT include prices for similar or related variants (e.g. if searching for "RTX 5080", ignore "RTX 5080 Super", "RTX 5070 Ti", etc.)
 - Search noon.com, amazon.ae, sharafdg.com, microless.com, and any other UAE retailer you find
 - Use the LOWEST price you find for that exact model (not an average)
 - Ignore bundle deals, combo listings, or used items
+- CRITICAL: Only use prices that are live and current as of ${today}. Do NOT use cached results, training data, or prices from 2024 or early 2025 — those are outdated.
 - Respond with ONLY this JSON, no other text: {"price": 3250, "retailer": "noon.ae", "note": "optional short note if uncertain"}
 
 If you cannot find the exact product on any UAE retailer, respond with: {"price": 0, "retailer": "", "note": "not found"}`
@@ -61,8 +64,8 @@ If you cannot find the exact product on any UAE retailer, respond with: {"price"
     if (!price || price === 0) {
         const retry = await openai.responses.create({
             model: 'gpt-4o',
-            tools: [{ type: 'web_search_preview' }],
-            input: `Search for "${productName}" price in UAE AED. Find any UAE retailer selling this product right now. Use the lowest price found. Respond with ONLY: {"price": 1234, "retailer": "site name"}`
+            tools: [{ type: 'web_search_preview', search_context_size: 'high' }],
+            input: `Today is ${today}. Search for the current price of "${productName}" in UAE AED as of ${today}. Find any UAE retailer selling this product right now — do not use old cached prices from 2024 or early 2025. Use the lowest current price found. Respond with ONLY: {"price": 1234, "retailer": "site name"}`
         });
         const retryText = parseOutputText(retry);
         try {

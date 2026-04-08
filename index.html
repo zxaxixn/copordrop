@@ -854,6 +854,207 @@
         }
         .deal-btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
 
+        /* ──────────────── PC BUILDER PAGE ──────────────── */
+        .builder-form {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            margin-bottom: 32px;
+        }
+        .builder-row {
+            display: flex;
+            gap: 16px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .builder-field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .builder-field label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--subtext);
+        }
+        .builder-budget-input {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--heading);
+            font-size: 1.1rem;
+            font-weight: 700;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            width: 200px;
+            transition: border-color 0.18s;
+        }
+        .builder-budget-input:focus { outline: none; border-color: var(--accent); }
+        .builder-budget-input::placeholder { color: var(--subtext-lt); font-weight: 400; }
+        .used-toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 4px;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 16px; height: 16px;
+            left: 3px; top: 3px;
+            background: var(--subtext);
+            border-radius: 50%;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .toggle-switch input:checked + .toggle-slider { background: var(--accent-dim); border-color: var(--accent); }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); background: var(--accent); }
+        .toggle-label { font-size: 0.88rem; color: var(--subtext); cursor: pointer; }
+        .toggle-label span { color: var(--text); font-weight: 600; }
+        .builder-btn {
+            background: var(--accent);
+            color: #000;
+            font-family: var(--heading);
+            font-weight: 700;
+            font-size: 0.92rem;
+            padding: 13px 28px;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: opacity 0.18s;
+            white-space: nowrap;
+        }
+        .builder-btn:hover { opacity: 0.85; }
+        .builder-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .build-result {
+            display: none;
+        }
+        .build-summary-card {
+            background: var(--card);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius-lg);
+            padding: 24px 28px;
+            margin-bottom: 24px;
+        }
+        .build-summary-title {
+            font-family: var(--heading);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+        .build-summary-text {
+            font-size: 0.88rem;
+            color: var(--subtext);
+            line-height: 1.6;
+        }
+        .build-total {
+            font-family: var(--heading);
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text);
+            margin-top: 10px;
+        }
+        .build-total span { font-size: 1rem; color: var(--subtext); font-weight: 400; }
+        .parts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .part-row {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 18px 22px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: border-color 0.18s;
+        }
+        .part-row:hover { border-color: rgba(0,255,136,0.25); }
+        .part-row.used-part { border-left: 3px solid var(--orange); }
+        .part-category {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--subtext);
+            min-width: 80px;
+        }
+        .part-info { flex: 1; min-width: 0; }
+        .part-name {
+            font-family: var(--heading);
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.3;
+        }
+        .part-reason {
+            font-size: 0.8rem;
+            color: var(--subtext);
+            margin-top: 3px;
+            line-height: 1.4;
+        }
+        .part-used-badge {
+            font-size: 0.68rem;
+            font-weight: 700;
+            background: rgba(255,149,0,0.15);
+            color: var(--orange);
+            padding: 2px 7px;
+            border-radius: 5px;
+            margin-left: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .part-price {
+            font-family: var(--heading);
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--accent);
+            white-space: nowrap;
+        }
+        .part-links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+        .part-link {
+            font-family: var(--heading);
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-decoration: none;
+            padding: 4px 10px;
+            border: 1px solid rgba(0,255,136,0.3);
+            border-radius: 6px;
+            transition: background 0.18s;
+            white-space: nowrap;
+        }
+        .part-link:hover { background: var(--accent-dim); }
+        .part-link.dubizzle { color: var(--orange); border-color: rgba(255,149,0,0.3); }
+        .part-link.dubizzle:hover { background: var(--orange-dim); }
+        @media (max-width: 600px) {
+            .part-row { flex-wrap: wrap; }
+            .part-category { min-width: unset; }
+            .part-links { justify-content: flex-start; }
+            .builder-budget-input { width: 100%; }
+            .builder-row { flex-direction: column; align-items: stretch; }
+        }
+
         /* Buy column in price table */
         .buy-link {
             display: inline-flex;
@@ -1075,6 +1276,7 @@
     <ul class="nav-links" id="navLinks">
         <li><a id="nav-tracker" onclick="navigate('tracker')">Price Tracker</a></li>
         <li><a id="nav-deals"   onclick="navigate('deals')">🔥 Hot Deals</a></li>
+        <li><a id="nav-builder" onclick="navigate('builder')">🖥️ PC Builder</a></li>
         <li><a id="nav-checker" onclick="navigate('checker')">Deal Checker</a></li>
         <li><a id="nav-about"   onclick="navigate('about')">About</a></li>
     </ul>
@@ -1228,6 +1430,60 @@ e.g. 'RTX 4070 Super, 12GB GDDR6X, barely used, asking 2,500 AED on Dubizzle. Pi
             </div>
 
             <div class="ad-slot">[ Ad slot — Google AdSense ]</div>
+
+        </div>
+    </section>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PC BUILDER PAGE
+═══════════════════════════════════════════ -->
+<div class="page" id="page-builder">
+    <section class="section">
+        <div class="container">
+
+            <div class="ad-slot">[ Ad slot — Google AdSense ]</div>
+
+            <div class="section-label">AI-Powered</div>
+            <h2 class="section-title">PC Builder</h2>
+            <p class="section-sub">Set your budget and we'll build you the best PC possible using current UAE prices. Toggle used parts to stretch your budget further.</p>
+
+            <div class="builder-form">
+                <div class="builder-row">
+                    <div class="builder-field">
+                        <label for="builderBudget">Budget (AED)</label>
+                        <input type="number" id="builderBudget" class="builder-budget-input" placeholder="e.g. 3500" min="500" max="100000" />
+                    </div>
+                    <div class="builder-field">
+                        <label>Options</label>
+                        <div class="used-toggle-wrap">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="includeUsed" />
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label">Include <span>used parts</span> from Dubizzle</span>
+                        </div>
+                    </div>
+                    <div class="builder-field">
+                        <label>&nbsp;</label>
+                        <button class="builder-btn" id="builderBtn" onclick="buildPC()">Build My PC</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="builderStatus" style="display:none; text-align:center; padding: 40px 0;">
+                <div class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto 16px;"></div>
+                <p id="builderStatusText" style="color:var(--subtext);font-size:0.9rem;">Searching for current UAE prices…</p>
+            </div>
+
+            <div class="build-result" id="buildResult">
+                <div class="build-summary-card">
+                    <div class="build-summary-title">Your Build</div>
+                    <div class="build-summary-text" id="buildSummaryText"></div>
+                    <div class="build-total" id="buildTotal"></div>
+                </div>
+                <div class="parts-list" id="partsList"></div>
+            </div>
 
         </div>
     </section>
@@ -1448,6 +1704,7 @@ Include specs, price, condition, and platform for the best analysis."
                     <li><a onclick="navigate('home')">Home</a></li>
                     <li><a onclick="navigate('tracker')">Price Tracker</a></li>
                     <li><a onclick="navigate('deals')">Hot Deals</a></li>
+                    <li><a onclick="navigate('builder')">PC Builder</a></li>
                     <li><a onclick="navigate('checker')">Deal Checker</a></li>
                     <li><a onclick="navigate('about')">About</a></li>
                 </ul>
@@ -2252,6 +2509,185 @@ document.addEventListener('DOMContentLoaded', async () => {
     refreshPrices();
     loadRecentVerdicts();
 });
+
+// ──────────────── PC BUILDER ────────────────
+async function buildPC() {
+    const budgetInput = document.getElementById('builderBudget');
+    const btn         = document.getElementById('builderBtn');
+    const statusEl    = document.getElementById('builderStatus');
+    const statusText  = document.getElementById('builderStatusText');
+    const resultEl    = document.getElementById('buildResult');
+
+    const budget = parseInt(budgetInput.value, 10);
+    if (!budget || budget < 500) { alert('Enter a budget of at least 500 AED'); return; }
+
+    const includeUsed = document.getElementById('includeUsed').checked;
+
+    btn.disabled = true;
+    statusEl.style.display = 'block';
+    resultEl.style.display = 'none';
+
+    const setStatus = msg => { statusText.textContent = msg; };
+    setStatus('Fetching current UAE prices…');
+
+    try {
+        // Grab live DB prices for context
+        let dbPrices = [];
+        try {
+            const r = await fetch('/api/products');
+            if (r.ok) dbPrices = (await r.json()).filter(p => p.price > 0);
+        } catch (e) {}
+
+        const priceContext = dbPrices.length
+            ? `\n\nCURRENT UAE PRICES (live tracked from Noon, Sharaf DG, Microless):\n${
+                dbPrices.map(p => `- ${p.name} (${p.category}): AED ${p.price.toLocaleString()}`).join('\n')
+              }`
+            : '';
+
+        const usedNote = includeUsed
+            ? '\n\nThe user is open to used parts from Dubizzle. If a used part saves significant money vs new, recommend it and mark isUsed: true. Used parts should be 25–40% cheaper than new retail.'
+            : '\n\nNew parts only — do NOT suggest used parts.';
+
+        const system = `You are a UAE PC hardware expert. Build the best complete PC for the given AED budget using real current UAE market prices. You have a web_search tool — use it for parts not in the price list below (especially motherboards, PSUs, cases, CPU coolers).${priceContext}${usedNote}
+
+Budget tiers (adjust accordingly):
+- Under 1500 AED: APU iGPU build (Ryzen 5600G or similar, no discrete GPU)
+- 1500–2500 AED: entry discrete GPU
+- 2500–4000 AED: solid 1080p / light 1440p gaming
+- 4000–7000 AED: 1440p high-refresh
+- 7000+ AED: enthusiast 4K build
+
+Always include: CPU, Motherboard, RAM, SSD, PSU, Case, and GPU (unless iGPU build). Add a CPU cooler if the CPU doesn't include one. Keep total at or under budget (±5% is acceptable for a significantly better build). Prioritise GPU > CPU > RAM > SSD > Case/PSU/Cooler when budget is tight.
+
+Reply ONLY with a valid JSON object — no markdown fences, no explanation:
+{
+  "title": "Short punchy name (e.g. '1080p Budget Beast' or 'All-Around 1440p Rig')",
+  "summary": "2–3 sentences: what this build is good for and why these parts were chosen",
+  "totalPrice": <integer AED>,
+  "parts": [
+    {
+      "category": "GPU|CPU|Motherboard|RAM|SSD|PSU|Case|Cooler",
+      "name": "Full product name",
+      "price": <integer AED>,
+      "priceSource": "Noon.com|Amazon.ae|Sharaf DG|Dubizzle|Estimate",
+      "reason": "One punchy sentence on why this part",
+      "isUsed": false,
+      "amazonQuery": "search query string for Amazon.ae",
+      "noonQuery": "search query string for Noon.com"
+    }
+  ]
+}`;
+
+        const messages = [{
+            role: 'user',
+            content: `Build a complete PC for AED ${budget.toLocaleString()}. ${includeUsed ? 'Used parts from Dubizzle are fine.' : 'New parts only.'}`
+        }];
+
+        const tools = [{
+            name: 'web_search',
+            description: 'Search for current UAE prices for PC parts. Use this for parts not in the provided price list (motherboards, PSUs, cases, coolers, etc.).',
+            input_schema: {
+                type: 'object',
+                properties: {
+                    query: { type: 'string', description: 'e.g. "B650 motherboard price UAE 2026" or "Corsair RM750x AED noon"' }
+                },
+                required: ['query']
+            }
+        }];
+
+        // Agentic loop (same pattern as callClaude)
+        for (let round = 0; round < 6; round++) {
+            const res = await fetch('/api/claude', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2500, system, messages, tools })
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error?.message || `API error ${res.status}`);
+            }
+            const data = await res.json();
+
+            if (data.stop_reason === 'tool_use') {
+                messages.push({ role: 'assistant', content: data.content });
+                const toolBlocks  = data.content.filter(b => b.type === 'tool_use');
+                const toolResults = [];
+
+                for (const tb of toolBlocks) {
+                    const query = tb?.input?.query || '';
+                    setStatus(`Searching: "${query}"`);
+                    let result = 'No results found.';
+                    try {
+                        const params = new URLSearchParams({ q: query, gl: 'ae', hl: 'en' });
+                        const sData  = await (await fetch(`/api/search?${params}`)).json();
+                        const shop   = (sData.shopping_results || []).slice(0, 5);
+                        const org    = (sData.organic_results  || []).slice(0, 5);
+                        if (shop.length) result = 'UAE Shopping:\n' + shop.map(r => `• ${r.title}: ${r.price} — ${r.source}`).join('\n');
+                        else if (org.length) result = 'Search results:\n' + org.map(r => `• ${r.title}: ${r.snippet}`).join('\n');
+                    } catch (e) { result = `Search failed: ${e.message}`; }
+                    toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: result });
+                }
+
+                messages.push({ role: 'user', content: toolResults });
+                setStatus('Building your PC…');
+                continue;
+            }
+
+            // Final JSON response
+            const raw = (data.content.find(b => b.type === 'text')?.text || '').trim();
+            let build;
+            try {
+                const m = raw.match(/\{[\s\S]*\}/);
+                build = JSON.parse(m ? m[0] : raw);
+            } catch (e) {
+                throw new Error('Could not parse build — try again.');
+            }
+            renderBuild(build);
+            return;
+        }
+        throw new Error('Too many search rounds — please try again.');
+
+    } catch (err) {
+        alert('Build failed: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        statusEl.style.display = 'none';
+    }
+}
+
+function renderBuild(build) {
+    const catEmoji = { GPU:'🎮', CPU:'🧠', Motherboard:'🔧', RAM:'💾', SSD:'💿', PSU:'⚡', Case:'📦', Cooler:'❄️' };
+
+    document.querySelector('.build-summary-title').textContent = build.title || 'Your Build';
+    document.getElementById('buildSummaryText').textContent    = build.summary || '';
+    document.getElementById('buildTotal').innerHTML            = `AED ${Number(build.totalPrice).toLocaleString()} <span>total build cost</span>`;
+
+    document.getElementById('partsList').innerHTML = (build.parts || []).map(part => {
+        const emoji    = catEmoji[part.category] || '🔩';
+        const usedBadge = part.isUsed ? `<span class="part-used-badge">USED</span>` : '';
+        const amzHref  = amazonLink(encodeURIComponent(part.amazonQuery || part.name).replace(/%20/g, '+'));
+        const noonHref = noonLink(part.noonQuery || part.name);
+        const dubHref  = `https://uae.dubizzle.com/search/?q=${encodeURIComponent(part.name)}`;
+
+        return `<div class="part-row${part.isUsed ? ' used-part' : ''}">
+            <div class="part-category">${emoji} ${part.category}</div>
+            <div class="part-info">
+                <div class="part-name">${escapeHtml(part.name)}${usedBadge}</div>
+                <div class="part-reason">${escapeHtml(part.reason || '')}</div>
+            </div>
+            <div class="part-price">AED ${Number(part.price).toLocaleString()}</div>
+            <div class="part-links">
+                <a class="part-link" href="${amzHref}" target="_blank" rel="noopener">Amazon ↗</a>
+                <a class="part-link" href="${noonHref}" target="_blank" rel="noopener">Noon ↗</a>
+                ${part.isUsed ? `<a class="part-link dubizzle" href="${dubHref}" target="_blank" rel="noopener">Dubizzle ↗</a>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+
+    const resultEl = document.getElementById('buildResult');
+    resultEl.style.display = 'block';
+    resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 // ──────────────── KEYBOARD SHORTCUT ────────────────
 // Ctrl/Cmd + Enter to submit from active page
