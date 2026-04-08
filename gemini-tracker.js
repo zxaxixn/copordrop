@@ -163,24 +163,18 @@ async function trackAllPrices(singleProductId = null) {
                 if (!db.priceHistory) db.priceHistory = {};
                 if (!db.priceHistory[product.id]) db.priceHistory[product.id] = [];
 
-                // Anchor priority: manualMsrp → PCPP reference → existing DB price (last resort)
-                const anchor = product.manualMsrp
-                    || (msrpRef ? msrpRef.aedEquiv : null)
-                    || (product.price > 0 ? product.price : null);
+                // Anchor priority: manualMsrp → PCPP reference
+                const anchor = product.manualMsrp || (msrpRef ? msrpRef.aedEquiv : null);
 
                 if (anchor) {
                     const ratio = result.price / anchor;
-                    // Tighter range for DB-price fallback anchor (price shouldn't halve overnight)
-                    const [minRatio, maxRatio] = product.manualMsrp || msrpRef ? [0.3, 4.0] : [0.5, 2.0];
-                    if (ratio < minRatio || ratio > maxRatio) {
+                    if (ratio < 0.3 || ratio > 4.0) {
                         throw new Error(
                             `Price check failed — AED ${result.price.toLocaleString()} is ` +
-                            `${Math.round(ratio * 100)}% of ref AED ${anchor.toLocaleString()}` +
-                            ((!product.manualMsrp && !msrpRef) ? ' (anchored to previous DB price)' : '')
+                            `${Math.round(ratio * 100)}% of ref AED ${anchor.toLocaleString()}`
                         );
                     }
                     if (product.manualMsrp) console.log(`      📌 Ref price check passed (AED ${anchor.toLocaleString()})`);
-                    else if (!msrpRef) console.log(`      📌 DB price anchor check passed (AED ${anchor.toLocaleString()})`);
                 }
 
                 // ── 4. Save ───────────────────────────────────────────────

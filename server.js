@@ -149,6 +149,17 @@ app.post('/api/admin/clear-ref-prices', authRequired, (req, res) => {
     res.json({ ok: true });
 });
 
+// ── Admin: clear all current prices (keeps products + history) ──
+app.post('/api/admin/clear-prices', authRequired, (req, res) => {
+    const db = readDB();
+    for (const p of db.products) {
+        p.price = 0;
+        delete p.checkedAt;
+    }
+    writeDB(db);
+    res.json({ ok: true });
+});
+
 // ── Admin: clear all price history ───────────────────────
 app.post('/api/admin/clear-history', authRequired, (req, res) => {
     const db = readDB();

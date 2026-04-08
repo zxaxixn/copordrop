@@ -217,6 +217,7 @@
         <div class="topbar-logo">CopOrDrop<span>.ae</span> Admin</div>
         <div class="topbar-right">
             <a href="/" style="color:var(--subtext);font-size:0.82rem;text-decoration:none;" target="_blank">← View Site</a>
+            <button class="logout-btn" id="clearPricesBtn" onclick="clearPrices()" style="border-color:var(--red);color:var(--red);">Clear Prices</button>
             <button class="logout-btn" id="clearHistoryBtn" onclick="clearHistory()" style="border-color:var(--red);color:var(--red);">Clear History</button>
             <button class="logout-btn" id="clearRefBtn" onclick="clearRefPrices()" style="border-color:var(--red);color:var(--red);">Clear Ref Prices</button>
             <button class="logout-btn" id="seedBtn" onclick="seedMsrp()" style="border-color:var(--orange);color:var(--orange);">Seed Ref Prices</button>
@@ -628,6 +629,28 @@ async function openHistory(id, name) {
 
 function closeHistory() {
     document.getElementById('historyModal').classList.remove('open');
+}
+
+// ── Clear all current prices ──────────────────────────────
+async function clearPrices() {
+    if (!confirm('Reset ALL product prices to 0? Products and history are kept — only the current price values are cleared. This cannot be undone.')) return;
+    const btn = document.getElementById('clearPricesBtn');
+    btn.disabled = true;
+    btn.textContent = 'Clearing…';
+    try {
+        const r = await fetch('/api/admin/clear-prices', {
+            method: 'POST',
+            headers: { 'x-admin-token': TOKEN }
+        });
+        if (!r.ok) { alert('Error clearing prices'); return; }
+        alert('✅ All prices cleared. Products and history are intact.');
+        await reloadTable();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Clear Prices';
+    }
 }
 
 // ── Clear all reference prices ────────────────────────────
