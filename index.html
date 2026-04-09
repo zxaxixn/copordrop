@@ -1075,8 +1075,8 @@
             width: fit-content;
         }
         .buy-link:hover { background: var(--accent-dim); }
-        .buy-link.noon { color: var(--orange); border-color: rgba(255,149,0,0.3); }
-        .buy-link.noon:hover { background: var(--orange-dim); }
+        .buy-link.microless { color: #4a9eff; border-color: rgba(74,158,255,0.3); }
+        .buy-link.microless:hover { background: rgba(74,158,255,0.08); }
 
         /* ──────────────── MISC ──────────────── */
         .divider { height: 1px; background: var(--border); margin: 40px 0; }
@@ -1415,7 +1415,7 @@ e.g. 'RTX 4070 Super, 12GB GDDR6X, barely used, asking 2,500 AED on Dubizzle. Pi
                 <div>
                     <div class="section-label">Live Finds</div>
                     <h2 class="section-title">🔥 Hot Deals Right Now</h2>
-                    <p class="section-sub" style="margin-bottom:0;">AI-curated deals from Amazon.ae, Noon.com &amp; Dubizzle. Refreshed on demand.</p>
+                    <p class="section-sub" style="margin-bottom:0;">AI-curated deals from Amazon.ae, Microless.com &amp; Dubizzle. Refreshed on demand.</p>
                 </div>
                 <button class="refresh-btn" id="dealsRefreshBtn" onclick="refreshDeals()">
                     <span id="dealsRefreshLabel">🔄 Find Deals</span>
@@ -1886,7 +1886,7 @@ async function callClaude(listing, setStatus = () => {}) {
     });
 
     const priceContext = dbPrices.length
-        ? `\n\nCURRENT UAE NEW PRODUCT PRICES (live tracked from Noon, Sharaf DG, Microless — not training data):\n${
+        ? `\n\nCURRENT UAE NEW PRODUCT PRICES (live tracked from Amazon.ae, Sharaf DG, Microless — not training data):\n${
             dbPrices.map(p => `- ${p.name}: AED ${p.price.toLocaleString()} (checked ${new Date(p.checkedAt).toLocaleDateString('en-AE', { day: 'numeric', month: 'short' })})`).join('\n')
           }`
         : '';
@@ -2188,8 +2188,8 @@ function amazonLink(query) {
     const tag = (AMAZON_TAG && AMAZON_TAG !== 'PASTE-AFFILIATE-TAG') ? `&tag=${AMAZON_TAG}` : '';
     return `https://www.amazon.ae/s?k=${query}${tag}`;
 }
-function noonLink(query) {
-    return `https://www.noon.com/uae-en/search/?q=${encodeURIComponent(query)}`;
+function microlessLink(query) {
+    return `https://www.microless.com/search/?q=${encodeURIComponent(query)}`;
 }
 
 // ─────────────────────────────────────────────────
@@ -2237,7 +2237,7 @@ function renderPriceTable(products) {
                 <td>
                     <button class="chart-btn" onclick="openChart('${item.id}','${safeItemName}')">📈 Chart &amp; Predict</button>
                     <a class="buy-link" href="${amazonLink(nameQ)}" target="_blank" rel="noopener">Amazon.ae ↗</a>
-                    <a class="buy-link noon" href="${noonLink(item.name)}" target="_blank" rel="noopener">Noon ↗</a>
+                    <a class="buy-link microless" href="${microlessLink(item.name)}" target="_blank" rel="noopener">Microless ↗</a>
                 </td>
             </tr>`;
         }
@@ -2311,7 +2311,7 @@ async function refreshDeals() {
 
     const prompt = `You are a UAE PC deals expert. Today is ${new Date().toDateString()}.${priceContext}
 
-Find the 6 best value PC hardware deals available RIGHT NOW in the UAE market (Amazon.ae, Noon.com, Sharaf DG, Dubizzle).
+Find the 6 best value PC hardware deals available RIGHT NOW in the UAE market (Amazon.ae, Microless.com, Sharaf DG, Dubizzle).
 Focus on components where current UAE prices represent genuinely good value — either below typical market rate, recently dropped in price, or just the best option at their price tier.
 
 Reply ONLY with a JSON array. No markdown, no explanation. Format:
@@ -2319,12 +2319,12 @@ Reply ONLY with a JSON array. No markdown, no explanation. Format:
   {
     "name": "Short product name",
     "desc": "One punchy sentence on why it's a good deal",
-    "platform": "Amazon.ae" | "Noon.com" | "Dubizzle" | "Sharaf DG",
+    "platform": "Amazon.ae" | "Microless.com" | "Dubizzle" | "Sharaf DG",
     "price": NUMBER (AED, integer),
     "wasPriceIfApplicable": NUMBER or null,
     "savingPct": NUMBER or null,
     "amazonQuery": "search query string for Amazon.ae",
-    "noonQuery": "search query string for Noon.com",
+    "microlessQuery": "search query string for Microless.com",
     "category": "GPU" | "CPU" | "RAM" | "SSD" | "Monitor" | "Other"
   }
 ]`;
@@ -2363,7 +2363,7 @@ function renderDeals(deals) {
         const savingBadge = d.savingPct ? `<span class="deal-saving">−${d.savingPct}%</span>` : '';
         const wasBadge = d.wasPriceIfApplicable ? `<span class="deal-was">${Number(d.wasPriceIfApplicable).toLocaleString()} AED</span>` : '';
         const amzHref  = amazonLink(encodeURIComponent(d.amazonQuery || d.name).replace(/%20/g,'+'));
-        const noonHref = noonLink(d.noonQuery || d.name);
+        const microlessHref = microlessLink(d.microlessQuery || d.name);
 
         return `<div class="deal-card">
             <div class="deal-platform">${emoji} ${d.platform} · ${d.category}</div>
@@ -2375,7 +2375,7 @@ function renderDeals(deals) {
             </div>
             <div class="deal-btns">
                 <a class="deal-btn-primary" href="${amzHref}" target="_blank" rel="noopener">Amazon.ae ↗</a>
-                <a class="deal-btn-secondary" href="${noonHref}" target="_blank" rel="noopener">Noon ↗</a>
+                <a class="deal-btn-secondary" href="${microlessHref}" target="_blank" rel="noopener">Microless ↗</a>
             </div>
         </div>`;
     }).join('');
@@ -2550,7 +2550,7 @@ async function buildPC() {
         } catch (e) {}
 
         const priceContext = dbPrices.length
-            ? `\n\nCURRENT UAE PRICES (live tracked from Noon, Sharaf DG, Microless):\n${
+            ? `\n\nCURRENT UAE PRICES (live tracked from Amazon.ae, Sharaf DG, Microless):\n${
                 dbPrices.map(p => `- ${p.name} (${p.category}): AED ${p.price.toLocaleString()}`).join('\n')
               }`
             : '';
@@ -2581,11 +2581,11 @@ Reply ONLY with a valid JSON object — no markdown fences, no explanation:
       "category": "GPU|CPU|Motherboard|RAM|SSD|PSU|Case|Cooler",
       "name": "Full product name",
       "price": <integer AED>,
-      "priceSource": "Noon.com|Amazon.ae|Sharaf DG|Dubizzle|Estimate",
+      "priceSource": "Microless.com|Amazon.ae|Sharaf DG|Dubizzle|Estimate",
       "reason": "One punchy sentence on why this part",
       "isUsed": false,
       "amazonQuery": "search query string for Amazon.ae",
-      "noonQuery": "search query string for Noon.com"
+      "microlessQuery": "search query string for Microless.com"
     }
   ]
 }`;
@@ -2601,7 +2601,7 @@ Reply ONLY with a valid JSON object — no markdown fences, no explanation:
             input_schema: {
                 type: 'object',
                 properties: {
-                    query: { type: 'string', description: `e.g. "B650 motherboard price UAE ${new Date().getFullYear()}" or "Corsair RM750x AED noon ${new Date().getFullYear()}"` }
+                    query: { type: 'string', description: `e.g. "B650 motherboard price UAE ${new Date().getFullYear()}" or "Corsair RM750x AED microless ${new Date().getFullYear()}"` }
                 },
                 required: ['query']
             }
@@ -2669,7 +2669,7 @@ function renderBuild(build) {
         const emoji    = catEmoji[part.category] || '🔩';
         const usedBadge = part.isUsed ? `<span class="part-used-badge">USED</span>` : '';
         const amzHref  = amazonLink(encodeURIComponent(part.amazonQuery || part.name).replace(/%20/g, '+'));
-        const noonHref = noonLink(part.noonQuery || part.name);
+        const microlessHref = microlessLink(part.microlessQuery || part.name);
         const dubHref  = `https://uae.dubizzle.com/search/?q=${encodeURIComponent(part.name)}`;
 
         return `<div class="part-row${part.isUsed ? ' used-part' : ''}">
@@ -2681,7 +2681,7 @@ function renderBuild(build) {
             <div class="part-price">AED ${Number(part.price).toLocaleString()}</div>
             <div class="part-links">
                 <a class="part-link" href="${amzHref}" target="_blank" rel="noopener">Amazon ↗</a>
-                <a class="part-link" href="${noonHref}" target="_blank" rel="noopener">Noon ↗</a>
+                <a class="part-link" href="${microlessHref}" target="_blank" rel="noopener">Microless ↗</a>
                 ${part.isUsed ? `<a class="part-link dubizzle" href="${dubHref}" target="_blank" rel="noopener">Dubizzle ↗</a>` : ''}
             </div>
         </div>`;

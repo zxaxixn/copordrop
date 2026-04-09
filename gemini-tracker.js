@@ -35,12 +35,13 @@ async function getOpenAIPrice(productName) {
 
 Rules:
 - Only match the EXACT model name — do NOT include prices for similar or related variants (e.g. if searching for "RTX 5080", ignore "RTX 5080 Super", "RTX 5070 Ti", etc.)
-- Search noon.com, amazon.ae, sharafdg.com, microless.com, and any other UAE retailer you find
+- Search amazon.ae, microless.com, sharafdg.com, and any other UAE retailer you find (do NOT use noon.com)
 - Use the LOWEST price you find for that exact model (not an average)
 - Ignore bundle deals, combo listings, or used items
 - CRITICAL: Only use prices that are live and current as of ${today}. Do NOT use cached results, training data, or prices from 2024 or early 2025 — those are outdated.
-- If the product is RAM (e.g. "DDR5 32GB" or "DDR4 16GB"), the price MUST be for the complete kit as listed — a "32GB" kit means a dual-channel 2×16GB package. Do NOT return the price of a single stick.
-- Respond with ONLY this JSON, no other text: {"price": 3250, "retailer": "noon.ae", "note": "optional short note if uncertain"}
+- If the product is RAM, the price MUST be for the complete kit as listed. The product name already encodes the full kit — e.g. "32GB DDR5" means a 2×16GB dual-channel package, "64GB DDR5" means 2×32GB. Do NOT return a single-stick price. If in doubt, confirm the listing says "Kit" or "2×".
+- If the product is an SSD or NVMe drive, the capacity in the product name (e.g. "1TB", "2TB", "4TB") must match EXACTLY — do not return a price for a different capacity variant.
+- Respond with ONLY this JSON, no other text: {"price": 3250, "retailer": "microless.com", "note": "optional short note if uncertain"}
 
 If you cannot find the exact product on any UAE retailer, respond with: {"price": 0, "retailer": "", "note": "not found"}`
     }), 45000, productName);
@@ -73,7 +74,7 @@ If you cannot find the exact product on any UAE retailer, respond with: {"price"
         const retry = await withTimeout(openai.responses.create({
             model: 'gpt-4o',
             tools: [{ type: 'web_search_preview', search_context_size: 'high' }],
-            input: `Today is ${today}. Search for the current price of "${productName}" in UAE AED as of ${today}. Find any UAE retailer selling this product right now — do not use old cached prices from 2024 or early 2025. Use the lowest current price found. Respond with ONLY: {"price": 1234, "retailer": "site name"}`
+            input: `Today is ${today}. Search for the current price of "${productName}" in UAE AED as of ${today}. Find any UAE retailer selling this product right now (amazon.ae, microless.com, sharafdg.com — do NOT use noon.com) — do not use old cached prices from 2024 or early 2025. Use the lowest current price found. For RAM, return the full kit price not a single stick. For SSDs, match the exact capacity. Respond with ONLY: {"price": 1234, "retailer": "site name"}`
         }), 45000, productName);
         const retryText = parseOutputText(retry);
         try {
