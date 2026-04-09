@@ -149,9 +149,12 @@ async function trackAllPrices(singleProductId = null) {
                 // ── 1. Fetch PCPartPicker reference → price fallback only ────
                 let msrpRef = null;
                 try {
-                    msrpRef = await getPcppReference(product.name, product.category);
+                    msrpRef = await withTimeout(
+                        getPcppReference(product.name, product.category),
+                        20000, `PCPP:${product.name}`
+                    );
                     if (msrpRef) console.log(`      📌 PCPP ref: AED ${msrpRef.aedEquiv.toLocaleString()}`);
-                } catch (e) { /* silent — PCPP is optional */ }
+                } catch (e) { console.log(`      ✗ PCPP ref: ${e.message}`); }
 
                 // ── 2. Try OpenAI Web Search first (live web, no browser) ────
                 try {

@@ -79,7 +79,7 @@ async function fetchPcppParts(partSlug) {
 
     // Primary: GitHub Pages static JSON (fast, no browser)
     try {
-        const res = await fetch(`${PCPP_GITHUB_BASE}/us/${partSlug}`);
+        const res = await fetch(`${PCPP_GITHUB_BASE}/us/${partSlug}`, { signal: AbortSignal.timeout(15000) });
         if (res.ok) {
             const contentType = res.headers.get('content-type') || '';
             let raw;
