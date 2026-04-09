@@ -35,7 +35,7 @@ async function getOpenAIPrice(productName) {
 
 Rules:
 - Only match the EXACT model name — do NOT include prices for similar or related variants (e.g. if searching for "RTX 5080", ignore "RTX 5080 Super", "RTX 5070 Ti", etc.)
-- Search amazon.ae, microless.com, sharafdg.com, and any other UAE retailer you find (do NOT use noon.com)
+- Search amazon.ae, microless.com, sharafdg.com, noon.com, and any other UAE retailer you find. Prefer prices from amazon.ae and microless.com as they show accurate kit pricing — use noon.com only if the product is not found elsewhere.
 - Use the LOWEST price you find for that exact model (not an average)
 - Ignore bundle deals, combo listings, or used items
 - CRITICAL: Only use prices that are live and current as of ${today}. Do NOT use cached results, training data, or prices from 2024 or early 2025 — those are outdated.
@@ -74,7 +74,7 @@ If you cannot find the exact product on any UAE retailer, respond with: {"price"
         const retry = await withTimeout(openai.responses.create({
             model: 'gpt-4o',
             tools: [{ type: 'web_search_preview', search_context_size: 'high' }],
-            input: `Today is ${today}. Search for the current price of "${productName}" in UAE AED as of ${today}. Find any UAE retailer selling this product right now (amazon.ae, microless.com, sharafdg.com — do NOT use noon.com) — do not use old cached prices from 2024 or early 2025. Use the lowest current price found. For RAM, return the full kit price not a single stick. For SSDs, match the exact capacity. Respond with ONLY: {"price": 1234, "retailer": "site name"}`
+            input: `Today is ${today}. Search for the current price of "${productName}" in UAE AED as of ${today}. Find any UAE retailer selling this product right now (amazon.ae, microless.com, sharafdg.com, noon.com) — do not use old cached prices from 2024 or early 2025. Use the lowest current price found. For RAM, return the full kit price not a single stick. For SSDs, match the exact capacity. Respond with ONLY: {"price": 1234, "retailer": "site name"}`
         }), 45000, productName);
         const retryText = parseOutputText(retry);
         try {
