@@ -1828,6 +1828,28 @@ async function runCheck(id) {
     }
 }
 
+// ──────────────── CLAUDE FETCH WITH RETRY ────────────────
+async function claudeFetch(body) {
+    const delays = [2000, 4000, 8000];
+    for (let attempt = 0; ; attempt++) {
+        const res = await fetch('/api/claude', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            const msg = errData.error?.message || `API error ${res.status}`;
+            if ((res.status === 529 || res.status === 429 || msg.toLowerCase().includes('overload')) && attempt < delays.length) {
+                await new Promise(r => setTimeout(r, delays[attempt]));
+                continue;
+            }
+            throw new Error(msg);
+        }
+        return res.json();
+    }
+}
+
 // ──────────────── CLAUDE API WITH WEB SEARCH TOOL ────────────────
 async function callClaude(listing, setStatus = () => {}) {
     // Fetch current market prices from our database
@@ -1927,18 +1949,7 @@ Then your analysis. Keep it under 200 words.`;
             tools
         };
 
-        const res = await fetch('/api/claude', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-
-        if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error?.message || `API error ${res.status}`);
-        }
-
-        const data = await res.json();
+        const data = await claudeFetch(body);
 
         // ── Tool call: Claude wants to search ──
         if (data.stop_reason === 'tool_use') {
@@ -2597,16 +2608,7 @@ Reply ONLY with a valid JSON object — no markdown fences, no explanation:
 
         // Agentic loop (same pattern as callClaude)
         for (let round = 0; round < 6; round++) {
-            const res = await fetch('/api/claude', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2500, system, messages, tools })
-            });
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.error?.message || `API error ${res.status}`);
-            }
-            const data = await res.json();
+            const data = await claudeFetch({ model: 'claude-sonnet-4-6', max_tokens: 2500, system, messages, tools });
 
             if (data.stop_reason === 'tool_use') {
                 messages.push({ role: 'assistant', content: data.content });
