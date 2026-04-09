@@ -1,9 +1,10 @@
 require('dotenv').config();
-const express   = require('express');
-const fs        = require('fs');
-const path      = require('path');
-const crypto    = require('crypto');
-const cron      = require('node-cron');
+const express    = require('express');
+const fs         = require('fs');
+const path       = require('path');
+const crypto     = require('crypto');
+const cron       = require('node-cron');
+const rateLimit  = require('express-rate-limit');
 const { fetchPcppParts, getPcppReference, PCPP_SUPPORTED_PARTS, PCPP_SUPPORTED_REGIONS, USD_TO_AED } = require('./pcpp');
 const { trackAllPrices, trackProduct, cancelTracking, getTrackingStatus } = require('./gemini-tracker');
 const { readDB, writeDB, initMongo } = require('./db');
@@ -55,8 +56,25 @@ Only include listings with AED prices between 200 and 500000. Up to 8 listings.`
 }
 
 const app = express();
+app.set('trust proxy', 1); // needed for correct IP behind Render's proxy
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
+
+// ── Rate limiters ────────────────────────────────────────
+const claudeLimit = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 12,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: { message: 'Too many requests — please wait a few minutes and try again.' } }
+});
+const searchLimit = rateLimit({
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    max: 25,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Search limit reached — please wait a few minutes.' }
+});
 
 // ── Config ──────────────────────────────────────────────
 const ADMIN_PASSWORD       = process.env.ADMIN_PASSWORD;
@@ -222,7 +240,7 @@ app.post('/api/verdicts', (req, res) => {
 });
 
 // ── OpenAI-powered Google search proxy ───────────────────
-app.get('/api/search', async (req, res) => {
+app.get('/api/search', searchLimit, async (req, res) => {
     try {
         const results = await openAISearch(req.query.q || '');
         res.json(results);
@@ -232,7 +250,7 @@ app.get('/api/search', async (req, res) => {
 });
 
 // ── OpenAI-powered Dubizzle used listings ─────────────────
-app.post('/api/dubizzle', async (req, res) => {
+app.post('/api/dubizzle', searchLimit, async (req, res) => {
     try {
         const listings = await openAIDubizzle(req.body.query || '');
         res.json(listings);
@@ -242,7 +260,7 @@ app.post('/api/dubizzle', async (req, res) => {
 });
 
 // ── Claude proxy ──────────────────────────────────────────
-app.post('/api/claude', async (req, res) => {
+app.post('/api/claude', claudeLimit, async (req, res) => {
     const maxRetries = 4;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {

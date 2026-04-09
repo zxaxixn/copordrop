@@ -471,6 +471,13 @@
         }
         .price-table tbody tr:last-child td { border-bottom: none; }
         .price-table tbody tr:hover td { background: var(--surface); }
+        @media (max-width: 640px) {
+            .price-table th:nth-child(3),
+            .price-table td:nth-child(3) { display: none; }
+            .price-table { font-size: 0.82rem; }
+            .price-table td { padding: 12px 12px; }
+            .price-table th { padding: 10px 12px; }
+        }
 
         .cat-row td {
             background: #141414;
@@ -1077,6 +1084,20 @@
         .buy-link:hover { background: var(--accent-dim); }
         .buy-link.microless { color: #4a9eff; border-color: rgba(74,158,255,0.3); }
         .buy-link.microless:hover { background: rgba(74,158,255,0.08); }
+        .verdict-retry-btn {
+            margin-top: 4px;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: var(--text);
+            font-family: var(--heading);
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.18s, border-color 0.18s;
+        }
+        .verdict-retry-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.4); }
 
         /* ──────────────── MISC ──────────────── */
         .divider { height: 1px; background: var(--border); margin: 40px 0; }
@@ -1804,6 +1825,10 @@ async function runCheck(id) {
         alert('Paste a listing first, fam 👀');
         return;
     }
+    if (input.length > 8000) {
+        alert('Listing is too long — trim it down a bit (max 8000 characters).');
+        return;
+    }
 
     // Loading state
     btn.disabled = true;
@@ -1821,7 +1846,9 @@ async function runCheck(id) {
         vCard.className = 'verdict-card drop';
         vCard.style.display = '';
         document.getElementById(cfg.labelId).innerHTML = '❌ Error';
-        document.getElementById(cfg.bodyId).textContent = 'Something went wrong: ' + err.message;
+        document.getElementById(cfg.bodyId).innerHTML =
+            escapeHtml(err.message) +
+            `<br><br><button class="verdict-retry-btn" onclick="runCheck('${id}')">Try Again →</button>`;
     } finally {
         btn.disabled = false;
         label.textContent = 'Check This Deal →';
@@ -2651,10 +2678,12 @@ Reply ONLY with a valid JSON object — no markdown fences, no explanation:
         throw new Error('Too many search rounds — please try again.');
 
     } catch (err) {
-        alert('Build failed: ' + err.message);
+        statusEl.style.display = 'block';
+        statusText.innerHTML =
+            `❌ ${escapeHtml(err.message)}<br><br>` +
+            `<button class="verdict-retry-btn" onclick="buildPC()">Try Again →</button>`;
     } finally {
         btn.disabled = false;
-        statusEl.style.display = 'none';
     }
 }
 
