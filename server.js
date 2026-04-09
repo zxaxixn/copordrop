@@ -21,10 +21,12 @@ function parseOutputText(response) {
 }
 
 async function openAISearch(query) {
+    const today = new Date().toISOString().slice(0, 10);
+    const year  = new Date().getFullYear();
     const response = await openai.responses.create({
         model: 'gpt-4o',
         tools: [{ type: 'web_search_preview' }],
-        input: `Search for: "${query}". Return ONLY a JSON object, no markdown, no extra text:
+        input: `Today is ${today}. Search for CURRENT ${year} prices: "${query}". Only return results from ${year} — ignore any cached, old, or pre-${year} listings. Return ONLY a JSON object, no markdown, no extra text:
 {"organic_results":[{"title":"...","link":"...","snippet":"..."}],"shopping_results":[{"title":"...","price":"AED ...","source":"..."}]}
 Up to 5 organic results, up to 5 shopping results. Shopping results must have AED prices from UAE retailers only.`
     });

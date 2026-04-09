@@ -2559,7 +2559,8 @@ async function buildPC() {
             ? '\n\nThe user is open to used parts from Dubizzle. If a used part saves significant money vs new, recommend it and mark isUsed: true. Used parts should be 25–40% cheaper than new retail.'
             : '\n\nNew parts only — do NOT suggest used parts.';
 
-        const system = `You are a UAE PC hardware expert. Build the best complete PC for the given AED budget using real current UAE market prices. You have a web_search tool — use it for parts not in the price list below (especially motherboards, PSUs, cases, CPU coolers).${priceContext}${usedNote}
+        const today  = new Date().toLocaleDateString('en-AE', { year: 'numeric', month: 'long', day: 'numeric' });
+        const system = `Today is ${today}. You are a UAE PC hardware expert. Build the best complete PC for the given AED budget using real current UAE market prices. You have a web_search tool — use it for parts not in the price list below (especially motherboards, PSUs, cases, CPU coolers). Always include the current year in your search queries to ensure fresh prices.${priceContext}${usedNote}
 
 Budget tiers (adjust accordingly):
 - Under 1500 AED: APU iGPU build (Ryzen 5600G or similar, no discrete GPU)
@@ -2596,28 +2597,28 @@ Reply ONLY with a valid JSON object — no markdown fences, no explanation:
 
         const tools = [{
             name: 'web_search',
-            description: 'Search for current UAE prices for PC parts. Use this for parts not in the provided price list (motherboards, PSUs, cases, coolers, etc.).',
+            description: 'Search for CURRENT UAE prices for PC parts. Always include the current year in your query. Use this for parts not in the provided price list (motherboards, PSUs, cases, coolers, etc.).',
             input_schema: {
                 type: 'object',
                 properties: {
-                    query: { type: 'string', description: 'e.g. "B650 motherboard price UAE 2026" or "Corsair RM750x AED noon"' }
+                    query: { type: 'string', description: `e.g. "B650 motherboard price UAE ${new Date().getFullYear()}" or "Corsair RM750x AED noon ${new Date().getFullYear()}"` }
                 },
                 required: ['query']
             }
         }];
 
         // Agentic loop (same pattern as callClaude)
-        for (let round = 0; round < 6; round++) {
+        for (let round = 0; round < 4; round++) {
             const data = await claudeFetch({ model: 'claude-sonnet-4-6', max_tokens: 2500, system, messages, tools });
 
             if (data.stop_reason === 'tool_use') {
                 messages.push({ role: 'assistant', content: data.content });
-                const toolBlocks  = data.content.filter(b => b.type === 'tool_use');
-                const toolResults = [];
+                const toolBlocks = data.content.filter(b => b.type === 'tool_use');
+                setStatus(`Searching for current prices…`);
 
-                for (const tb of toolBlocks) {
+                // Run all searches in parallel
+                const toolResults = await Promise.all(toolBlocks.map(async tb => {
                     const query = tb?.input?.query || '';
-                    setStatus(`Searching: "${query}"`);
                     let result = 'No results found.';
                     try {
                         const params = new URLSearchParams({ q: query, gl: 'ae', hl: 'en' });
@@ -2627,8 +2628,8 @@ Reply ONLY with a valid JSON object — no markdown fences, no explanation:
                         if (shop.length) result = 'UAE Shopping:\n' + shop.map(r => `• ${r.title}: ${r.price} — ${r.source}`).join('\n');
                         else if (org.length) result = 'Search results:\n' + org.map(r => `• ${r.title}: ${r.snippet}`).join('\n');
                     } catch (e) { result = `Search failed: ${e.message}`; }
-                    toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: result });
-                }
+                    return { type: 'tool_result', tool_use_id: tb.id, content: result };
+                }));
 
                 messages.push({ role: 'user', content: toolResults });
                 setStatus('Building your PC…');
