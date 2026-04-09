@@ -241,20 +241,32 @@ app.post('/api/dubizzle', async (req, res) => {
 
 // ── Claude proxy ──────────────────────────────────────────
 app.post('/api/claude', async (req, res) => {
-    try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method:  'POST',
-            headers: {
-                'x-api-key':         ANTHROPIC_API_KEY,
-                'anthropic-version': '2023-06-01',
-                'content-type':      'application/json'
-            },
-            body: JSON.stringify(req.body)
-        });
-        const data = await response.json();
-        res.status(response.status).json(data);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    const maxRetries = 4;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method:  'POST',
+                headers: {
+                    'x-api-key':         ANTHROPIC_API_KEY,
+                    'anthropic-version': '2023-06-01',
+                    'content-type':      'application/json'
+                },
+                body: JSON.stringify(req.body)
+            });
+            const data = await response.json();
+            // Retry on overloaded (529) or rate limit (429)
+            if ((response.status === 529 || response.status === 429) && attempt < maxRetries) {
+                const delay = Math.pow(2, attempt) * 500; // 500ms, 1s, 2s, 4s
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+            res.status(response.status).json(data);
+            return;
+        } catch (err) {
+            if (attempt === maxRetries) {
+                res.status(500).json({ error: err.message });
+            }
+        }
     }
 });
 
