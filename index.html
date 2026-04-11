@@ -1498,6 +1498,170 @@
             .hero-status { display: none; }
             .hero-corner { display: none; }
         }
+
+        /* ══════════════════════════════════════════════════════
+           PREMIUM VISUAL IMPACT — overrides above base styles
+           ══════════════════════════════════════════════════════ */
+
+        /* Green ambient light bleeds from top across entire page */
+        body {
+            background:
+                radial-gradient(ellipse 90% 40% at 50% 0%, rgba(0,255,136,0.07) 0%, transparent 70%),
+                radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px);
+            background-size: auto, 28px 28px;
+            background-color: #070707;
+        }
+
+        /* Nav — logo glows */
+        .nav-logo span {
+            text-shadow: 0 0 14px rgba(0,255,136,0.75), 0 0 28px rgba(0,255,136,0.3);
+        }
+        .nav-links a.active {
+            background: rgba(0,255,136,0.1);
+            text-shadow: 0 0 8px rgba(0,255,136,0.35);
+        }
+
+        /* Hero — dramatic center glow, visible grid */
+        .hero::before {
+            width: 1200px;
+            height: 900px;
+            background: radial-gradient(ellipse, rgba(0,255,136,0.2) 0%, rgba(0,255,136,0.04) 40%, transparent 65%);
+        }
+        .hero::after {
+            background-image:
+                linear-gradient(rgba(0,255,136,0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,136,0.08) 1px, transparent 1px);
+            background-size: 56px 56px;
+        }
+        .hero-badge {
+            background: rgba(0,255,136,0.07);
+            border-color: rgba(0,255,136,0.3);
+            text-shadow: 0 0 10px rgba(0,255,136,0.5);
+        }
+        .hero h1 .green {
+            text-shadow:
+                0 0 30px rgba(0,255,136,0.8),
+                0 0 70px rgba(0,255,136,0.4),
+                0 0 120px rgba(0,255,136,0.15);
+        }
+        .hero h1 .red {
+            text-shadow: 0 0 30px rgba(255,68,68,0.5), 0 0 60px rgba(255,68,68,0.2);
+        }
+        .hero-corner { opacity: 0.4; width: 28px; height: 28px; }
+        .hero-status {
+            background: rgba(0,255,136,0.04);
+            border-color: rgba(0,255,136,0.15);
+        }
+        .hero-status-val { text-shadow: 0 0 10px rgba(0,255,136,0.55); }
+
+        /* Section labels glow */
+        .section-label { text-shadow: 0 0 12px rgba(0,255,136,0.55); }
+        .section-label::before { opacity: 1; }
+
+        /* Checker card — green tinted, visible glow */
+        .checker-card {
+            border-color: rgba(0,255,136,0.15);
+            box-shadow:
+                0 0 0 1px rgba(0,255,136,0.05) inset,
+                0 0 80px rgba(0,255,136,0.06),
+                0 40px 80px rgba(0,0,0,0.6);
+        }
+        .checker-card::after { opacity: 0.45; }
+
+        /* Check button — statement */
+        .check-btn {
+            box-shadow: 0 4px 24px rgba(0,255,136,0.22);
+            font-size: 0.97rem;
+            letter-spacing: 0.3px;
+        }
+        .check-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 44px rgba(0,255,136,0.48);
+        }
+
+        /* Verdict cards — dramatic */
+        .verdict-card.cop {
+            background: rgba(0,255,136,0.07);
+            border-color: rgba(0,255,136,0.3);
+            box-shadow: 0 0 48px rgba(0,255,136,0.07), inset 0 0 40px rgba(0,255,136,0.02);
+        }
+        .verdict-card.drop {
+            background: rgba(255,68,68,0.07);
+            border-color: rgba(255,68,68,0.3);
+            box-shadow: 0 0 48px rgba(255,68,68,0.06);
+        }
+        .verdict-card.scam {
+            background: rgba(255,149,0,0.07);
+            border-color: rgba(255,149,0,0.3);
+            box-shadow: 0 0 48px rgba(255,149,0,0.05);
+        }
+        .verdict-card.cop  .verdict-label { text-shadow: 0 0 28px rgba(0,255,136,0.7); font-size: 1.7rem; }
+        .verdict-card.drop .verdict-label { text-shadow: 0 0 28px rgba(255,68,68,0.6); font-size: 1.7rem; }
+        .verdict-card.scam .verdict-label { text-shadow: 0 0 28px rgba(255,149,0,0.6); font-size: 1.7rem; }
+
+        /* Price cells — glow green */
+        .price-cell { text-shadow: 0 0 14px rgba(0,255,136,0.5); }
+
+        /* Category rows in tracker */
+        .cat-row td { text-shadow: 0 0 10px rgba(0,255,136,0.45); }
+
+        /* Table wrap — subtle green tinted border */
+        .table-wrap {
+            border-color: rgba(0,255,136,0.09);
+            box-shadow: 0 0 40px rgba(0,255,136,0.03);
+        }
+
+        /* Deal cards — strong hover glow */
+        .deal-card:hover {
+            border-color: rgba(0,255,136,0.3);
+            box-shadow: 0 0 36px rgba(0,255,136,0.08), 0 12px 40px rgba(0,0,0,0.5);
+            transform: translateY(-3px);
+        }
+        .deal-price { text-shadow: 0 0 12px rgba(0,255,136,0.5); }
+
+        /* Verdict grid items hover */
+        .verdict-item:hover {
+            border-color: rgba(0,255,136,0.2);
+            box-shadow: 0 0 20px rgba(0,255,136,0.04);
+        }
+        .vi-prices .fair { text-shadow: 0 0 8px rgba(0,255,136,0.45); }
+
+        /* PC builder */
+        .part-price { text-shadow: 0 0 12px rgba(0,255,136,0.45); }
+        .part-row:hover { border-color: rgba(0,255,136,0.22); }
+        .build-summary-card {
+            border-color: rgba(0,255,136,0.25);
+            box-shadow: 0 0 40px rgba(0,255,136,0.06);
+        }
+        .build-total {
+            color: var(--accent);
+            text-shadow: 0 0 20px rgba(0,255,136,0.5);
+        }
+        .builder-form {
+            border-color: rgba(0,255,136,0.1);
+        }
+
+        /* About stats */
+        .stat-val { text-shadow: 0 0 14px rgba(0,255,136,0.55); }
+
+        /* Social icon hover glow */
+        .social-icon:hover { box-shadow: 0 0 16px rgba(0,255,136,0.2); }
+
+        /* Accent spans everywhere */
+        .accent { text-shadow: 0 0 10px rgba(0,255,136,0.4); }
+
+        /* Builder btn glow */
+        .builder-btn:hover:not(:disabled) {
+            box-shadow: 0 10px 32px rgba(0,255,136,0.38) !important;
+        }
+
+        /* Section titles — slight lift */
+        .section-title { letter-spacing: -1.5px; }
+
+        /* Refresh btn hover */
+        .refresh-btn:hover:not(:disabled) {
+            box-shadow: 0 0 16px rgba(0,255,136,0.12);
+        }
     </style>
 </head>
 <body>
