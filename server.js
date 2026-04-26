@@ -175,6 +175,16 @@ app.post('/api/admin/clear-prices', authRequired, (req, res) => {
     for (const p of db.products) {
         p.price = 0;
         delete p.checkedAt;
+        delete p.fairPrice;
+        delete p.lowTrustedPrice;
+        delete p.highTrustedPrice;
+        delete p.priceConfidence;
+        delete p.priceStatus;
+        delete p.priceSource;
+        delete p.priceNotes;
+        delete p.priceSourceErrors;
+        delete p.priceOffers;
+        delete p.pcppAnchor;
     }
     writeDB(db);
     res.json({ ok: true });

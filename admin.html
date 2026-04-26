@@ -266,23 +266,25 @@
             <h2>All Products</h2>
             <span class="count-badge" id="countBadge">0 products</span>
         </div>
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Product</th>
-                        <th>Category</th>
-                        <th>Price (AED)</th>
-                        <th>Ref Price</th>
-                        <th>Last Checked</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="productTableBody">
-                    <tr><td colspan="5"><div class="empty-state"><div>📦</div>Loading…</div></td></tr>
-                </tbody>
-            </table>
-        </div>
+	        <div class="table-wrap">
+	            <table>
+	                <thead>
+	                    <tr>
+	                        <th>Product</th>
+	                        <th>Category</th>
+	                        <th>Fair Price</th>
+	                        <th>Band</th>
+	                        <th>Ref Price</th>
+	                        <th>Confidence</th>
+	                        <th>Last Checked</th>
+	                        <th>Actions</th>
+	                    </tr>
+	                </thead>
+	                <tbody id="productTableBody">
+	                    <tr><td colspan="8"><div class="empty-state"><div>📦</div>Loading…</div></td></tr>
+	                </tbody>
+	            </table>
+	        </div>
 
     </div>
 </div>
@@ -420,7 +422,7 @@ function renderTable(products) {
     document.getElementById('countBadge').textContent = `${products.length} product${products.length !== 1 ? 's' : ''}`;
 
     if (!products.length) {
-        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div>📦</div>No products yet. Add one above.</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div>📦</div>No products yet. Add one above.</div></td></tr>';
         return;
     }
 
@@ -434,11 +436,19 @@ function renderTable(products) {
         const refPrice = p.manualMsrp
             ? `<span style="color:var(--subtext);font-family:'Space Grotesk',sans-serif;font-weight:600;">${Number(p.manualMsrp).toLocaleString()}</span>`
             : '<span style="color:var(--subtext);font-size:0.8rem;opacity:0.5;">not set</span>';
+        const band = p.lowTrustedPrice && p.highTrustedPrice
+            ? `<span style="color:var(--subtext);font-size:0.78rem;">${Number(p.lowTrustedPrice).toLocaleString()}-${Number(p.highTrustedPrice).toLocaleString()}</span>`
+            : '<span style="color:var(--subtext);font-size:0.8rem;opacity:0.5;">—</span>';
+        const confidence = p.priceConfidence !== undefined
+            ? `<span title="${esc(p.priceSource || '')}" style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:${p.priceStatus === 'trusted' ? 'var(--accent)' : p.priceStatus === 'watch' ? 'var(--orange)' : 'var(--red)'};">${Number(p.priceConfidence)}%</span><br><span style="font-size:0.68rem;color:var(--subtext);text-transform:uppercase;">${esc(p.priceStatus || 'unknown')}</span>`
+            : '<span style="color:var(--subtext);font-size:0.8rem;opacity:0.5;">—</span>';
         return `<tr>
             <td style="font-weight:600;">${esc(p.name)}${expBadge}</td>
             <td><span class="cat-pill">${esc(p.category)}</span></td>
             <td class="price-val">${p.price ? Number(p.price).toLocaleString() + ' AED' : '—'}</td>
+            <td>${band}</td>
             <td>${refPrice}</td>
+            <td>${confidence}</td>
             <td class="date-val">${date}</td>
             <td>
                 <div class="action-btns">
@@ -783,8 +793,7 @@ async function trackPrices() {
         });
         const d = await r.json();
         if (!r.ok) { alert('Error: ' + (d.error || 'Unknown error')); return; }
-        alert(`✅ Done! Updated ${d.updated}/${d.total} products.${d.errors?.length ? '\n\nFailed:\n' + d.errors.map(e => `• ${e.product}: ${e.error}`).join('\n') : ''}`);
-        await reloadTable();
+        alert(d.message || 'Price tracking started in the background.');
     } catch (e) {
         alert('Error: ' + e.message);
     } finally {

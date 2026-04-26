@@ -1,34 +1,36 @@
 # CopOrDrop.ae — Project Context
 
 ## What it is
-A UAE PC hardware price tracker and deal checker. Users paste a listing and get a **COP / DROP / SCAM RISK** verdict powered by Claude. Prices for 108 tracked products (GPUs, CPUs, RAM, SSDs, monitors, cases, coolers, PSUs, fans, motherboards) are updated daily using OpenAI web search.
+A UAE PC hardware price tracker and deal checker. Users paste a listing and get a **COP / DROP / SCAM RISK** verdict powered by Claude. Prices for 108 tracked products (GPUs, CPUs, RAM, SSDs, monitors, cases, coolers, PSUs, fans, motherboards) are updated daily from Microless and Amazon.ae, with PCPartPicker/manual prices used as sanity anchors.
 
 ## Stack
 - **Backend**: Node.js + Express (`server.js`)
 - **Database**: MongoDB (production) + `db.json` (local fallback) via `db.js`
 - **Hosting**: Render (previously Railway) — port set by `process.env.PORT`, defaults to 3000
-- **AI**: Claude (Anthropic) for cop/drop reasoning, OpenAI `gpt-4o` with `web_search_preview` for price tracking and search
+- **AI**: Claude (Anthropic) for cop/drop reasoning; OpenAI `gpt-4o` with `web_search_preview` is still used by search endpoints, not by price tracking
 - **PCPartPicker**: US reference prices via GitHub Pages JSON + Puppeteer fallback (`pcpp.js`)
 
 ## Key files
 - `server.js` — Express server, all API routes, daily cron job (11 PM UAE / 19:00 UTC)
-- `gemini-tracker.js` — Daily price tracker using OpenAI Responses API; named "gemini" historically but uses OpenAI
+- `gemini-tracker.js` — Daily price tracker; named "gemini" historically but now uses retailer scraping + the fair-price algorithm
+- `retailer-pricer.js` — Microless and Amazon.ae offer scraper
+- `price-algorithm.js` — Weighted robust fair-price estimator
+- `PRICE_ALGORITHM.md` — Mathematical explanation of the estimator
 - `pcpp.js` — PCPartPicker price fetcher (US prices → AED conversion at 3.67 rate + 15% UAE margin)
 - `db.js` — Shared DB module, sync readDB/writeDB API backed by MongoDB + local file
 - `index.html` — Main frontend, cop/drop verdict UI, Claude agentic tool-use loop, PC Builder
 - `admin.html` — Admin panel: add/edit/delete products, trigger price tracking, seed/clear ref prices
 
 ## How price tracking works
-1. OpenAI searches UAE retailers (noon.com, amazon.ae, sharafdg.com, microless.com) for exact model
-2. If not found, retries with a broader query
-3. Falls back to PCPartPicker US price converted to AED if OpenAI fails
-4. Validates result against `manualMsrp` anchor (0.3x–4.0x ratio check) — PCPP reference used if no manualMsrp
-5. `writeDB` is called after every successful product so progress is never lost if the process is interrupted
-- Each prompt includes today's date and explicitly tells OpenAI to ignore cached/2024–2025 results
-- `search_context_size: 'high'` is set on the `web_search_preview` tool to force comprehensive live results
-- All OpenAI calls have a 45-second timeout via `withTimeout()` so the tracker never hangs on a single product
-- RAM searches include an explicit instruction: price must be for the full kit, not a single stick
-- DB price is NOT used as a validation anchor (was removed — old DB data was flawed)
+1. Scrapes Microless and Amazon.ae for current UAE retailer offers
+2. Uses exact-match checks to reject wrong variants, wrong capacities, sponsored/noisy results, and invalid prices
+3. Scores each accepted offer with source trust, title match, seller trust, stock state, PCPartPicker/manual anchor sanity, and recent price history sanity
+4. Computes a robust weighted fair price using weighted median + MAD winsorization, not a plain mean or plain median
+5. Stores `price`, `fairPrice`, `lowTrustedPrice`, `highTrustedPrice`, `priceConfidence`, `priceStatus`, and scored `priceOffers`
+6. `writeDB` is called after every successful product so progress is never lost if the process is interrupted
+- `manualMsrp` overrides PCPartPicker as the anchor
+- PCPartPicker is not treated as the preferred live UAE price; it is used as a sanity anchor and anchor-only fallback
+- See `PRICE_ALGORITHM.md` for formulas
 
 ## How the cop/drop verdict works
 1. Frontend fetches DB prices + OpenAI Dubizzle used listings
@@ -68,14 +70,14 @@ Buttons: Track Prices, Stop (appears during tracking), Seed Ref Prices, Clear Re
 - `POST /api/admin/seed-msrp` — seed manualMsrp from current prices
 
 ## Environment variables needed
-- `OPENAI_API_KEY` — price tracking + search
+- `OPENAI_API_KEY` — optional for search endpoints; not required for price tracking
 - `ANTHROPIC_API_KEY` — Claude verdicts and price predictions
 - `ADMIN_PASSWORD` — admin panel login
 - `MONGODB_URI` — MongoDB connection (optional, falls back to db.json)
 - `AMAZON_AFFILIATE_TAG` — optional, appended to Amazon links
 
 ## Things to know
-- The tracker file is called `gemini-tracker.js` but uses OpenAI — don't rename, too many references
+- The tracker file is called `gemini-tracker.js` for historical reasons — don't rename, too many references
 - `scrapers.js` was deleted — Google search and Dubizzle now use OpenAI `web_search_preview`
 - PCPartPicker `puppeteer-core` dependency is still needed by `pcpp.js`
 - Price history is backfilled from Jan 5 2026 on first track
