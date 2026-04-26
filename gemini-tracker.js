@@ -82,6 +82,51 @@ function applyPriceResult(product, result, msrpRef) {
     }
 }
 
+function trimTitle(title) {
+    const clean = String(title || '').replace(/\s+/g, ' ').trim();
+    return clean.length > 90 ? `${clean.slice(0, 87)}...` : clean;
+}
+
+function describeOffer(offer) {
+    const flags = (offer.flags || []).length ? offer.flags.join('|') : 'no-flags';
+    const price = offer.price ? `AED ${Number(offer.price).toLocaleString()}` : 'no-price';
+    return `${offer.source} ${price} "${trimTitle(offer.title)}" -> ${flags}`;
+}
+
+function offerDiagnostics(result, limit = 5) {
+    const offers = result.offers || [];
+    const accepted = offers.filter(offer => offer.accepted);
+    const rejected = offers.filter(offer => !offer.accepted);
+
+    return {
+        accepted: accepted.slice(0, limit).map(describeOffer),
+        rejected: rejected
+            .sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
+            .slice(0, limit)
+            .map(describeOffer)
+    };
+}
+
+function logOfferDiagnostics(result) {
+    const diagnostics = offerDiagnostics(result, 4);
+    if (diagnostics.accepted.length) {
+        console.log('      accepted sample:');
+        diagnostics.accepted.forEach(line => console.log(`        ${line}`));
+    }
+    if (diagnostics.rejected.length) {
+        console.log('      rejected sample:');
+        diagnostics.rejected.forEach(line => console.log(`        ${line}`));
+    }
+}
+
+function failureMessage(result) {
+    const notes = result.notes?.length
+        ? result.notes.join(', ')
+        : 'No trusted Microless/Amazon.ae price found';
+    const rejected = offerDiagnostics(result, 3).rejected;
+    return rejected.length ? `${notes}; rejected: ${rejected.join(' | ')}` : notes;
+}
+
 async function trackAllPrices(singleProductId = null) {
     if (isTracking) {
         console.log('[Tracker] Already running, skipping.');
@@ -156,16 +201,24 @@ async function trackAllPrices(singleProductId = null) {
                     anchorPrice,
                     lastKnownPrice: lastKnownPriceFor(db, product.id)
                 });
+                result.sourceErrors = sourceErrors;
 
-                if (!result.price || result.status === 'manual_review') {
-                    throw new Error(
-                        result.notes?.length
-                            ? result.notes.join(', ')
-                            : 'No trusted Microless/Amazon.ae price found'
-                    );
+                if (!result.price) {
+                    logOfferDiagnostics(result);
+                    throw new Error(failureMessage(result));
                 }
 
-                result.sourceErrors = sourceErrors;
+                if (result.status === 'manual_review') {
+                    logOfferDiagnostics(result);
+                    if (result.acceptedOffers?.length) {
+                        result.status = 'watch';
+                        result.confidence = Math.max(result.confidence, 45);
+                        result.notes = [...new Set([...(result.notes || []), 'low-confidence-retailer-price'])];
+                        console.log('      low confidence accepted offers - saving as watch');
+                    } else {
+                        throw new Error(failureMessage(result));
+                    }
+                }
 
                 if (!db.priceHistory) db.priceHistory = {};
                 if (!db.priceHistory[product.id]) db.priceHistory[product.id] = [];

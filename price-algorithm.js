@@ -17,6 +17,10 @@ const SOURCE_WEIGHTS = {
     'PCPartPicker': 0.35
 };
 
+const COMPONENT_ONLY_CATEGORIES = new Set([
+    'GPU', 'CPU', 'RAM', 'SSD', 'PSU', 'Cooler', 'Fan', 'Motherboard'
+]);
+
 function clamp(n, min, max) {
     return Math.max(min, Math.min(max, n));
 }
@@ -29,6 +33,9 @@ function normalizeText(value) {
     return String(value || '')
         .toLowerCase()
         .replace(/×/g, 'x')
+        .replace(/\b(rtx|gtx|rx|arc)\s*[- ]?\s*(\d{3,5})\s*[- ]?\s*(xtx|super|ti|gre|xt)?\b/g, '$1 $2 $3')
+        .replace(/\b(\d{3,5})\s*[- ]?\s*(xtx|super|ti|gre|xt)\b/g, '$1 $2')
+        .replace(/\b(\d{4,5})\s*[- ]?\s*(x3d)\b/g, '$1 $2')
         .replace(/[^a-z0-9+.\- ]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
@@ -84,6 +91,19 @@ function hasCapacityMismatch(queryTokens, titleTokens) {
     return false;
 }
 
+function isSystemListing(product, title) {
+    if (!COMPONENT_ONLY_CATEGORIES.has(product.category)) return false;
+
+    const text = normalizeText(title);
+    if (/\b(gaming|gamaing|desktop|mini|complete|prebuilt|barebone|workstation)\s+pc\b/.test(text)) return true;
+    if (/\bpc\s*[-:]\s*(amd|intel|ryzen|core)\b/.test(text)) return true;
+    if (/\b(laptop|notebook)\b/.test(text)) return true;
+
+    const hasStandalonePc = /\bpc\b/.test(text);
+    const hasSystemParts = /\b(ryzen|core i[3579]|intel core|ddr[45]|ram|ssd|nvme|psu|windows|win11|liquid cooler)\b/.test(text);
+    return hasStandalonePc && hasSystemParts;
+}
+
 function analyzeOfferMatch(product, offer) {
     const queryTokens = tokensFor(product.name);
     const titleTokens = tokensFor(offer.title || '');
@@ -93,6 +113,10 @@ function analyzeOfferMatch(product, offer) {
 
     if (!offer.price || offer.price < 100 || offer.price > 500000) {
         return { accepted: false, score: 0, flags: ['invalid-price'], keyTokens };
+    }
+
+    if (isSystemListing(product, offer.title || '')) {
+        return { accepted: false, score: 0, flags: ['system-or-bundle-listing'], keyTokens };
     }
 
     const requiredModelTokens = keyTokens.filter(token => isModelToken(token));
@@ -108,6 +132,16 @@ function analyzeOfferMatch(product, offer) {
 
     const queryTierWords = queryTokens.filter(token => HARD_TIER_WORDS.has(token));
     const titleTierWords = titleTokens.filter(token => HARD_TIER_WORDS.has(token));
+    const missingTierWords = queryTierWords.filter(token => !titleTierWords.includes(token));
+    if (missingTierWords.length) {
+        return {
+            accepted: false,
+            score: 0,
+            flags: [`variant-tier-missing:${[...new Set(missingTierWords)].join(',')}`],
+            keyTokens
+        };
+    }
+
     const extraTierWords = titleTierWords.filter(token => !queryTierWords.includes(token));
     if (extraTierWords.length) {
         return {
@@ -252,6 +286,8 @@ function scoreOffers(product, offers, anchorPrice, lastKnownPrice) {
         const anchor = anchorScoreFor(offer.price, anchorPrice);
         const history = historyScoreFor(offer.price, lastKnownPrice);
         const weight = sourceWeight * match.score * sellerScore * stockScore * anchor.score * history.score;
+        const flags = [...match.flags, ...anchor.flags, ...history.flags];
+        if (weight < 0.08) flags.push(`low-weight:${weight.toFixed(3)}`);
 
         return {
             ...offer,
@@ -265,7 +301,7 @@ function scoreOffers(product, offers, anchorPrice, lastKnownPrice) {
             historyScore: history.score,
             anchorRatio: anchor.ratio ? Number(anchor.ratio.toFixed(3)) : null,
             historyChange: history.change ? Number(history.change.toFixed(3)) : null,
-            flags: [...match.flags, ...anchor.flags, ...history.flags]
+            flags
         };
     });
 }

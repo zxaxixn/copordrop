@@ -33,13 +33,16 @@ H = most recent priceHistory value
 ## Exact Match Filter
 
 Each offer title is normalized into model tokens, capacity tokens, and tier words.
+Compact GPU titles are split before matching, so `RTX5070Ti`, `RTX 5070 TI`, and `RTX 5070 Ti` become equivalent tokens.
 
 Hard rejects:
 
 ```text
 missing required model token
+missing required tier word, e.g. RTX 5070 listing for RTX 5070 Ti product
 wrong capacity, e.g. 1TB listing for 2TB product
 wrong tier, e.g. RTX 4070 Ti when product is RTX 4070
+system/bundle listing, e.g. full gaming PC result for a GPU product
 invalid price
 ```
 

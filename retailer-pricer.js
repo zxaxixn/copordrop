@@ -56,7 +56,7 @@ async function newRetailPage(browser) {
 async function scrapeMicroless(browser, product) {
     const page = await newRetailPage(browser);
     try {
-        const url = `https://www.microless.com/search/?q=${encodeURIComponent(product.name)}`;
+        const url = `https://uae.microless.com/search/?query=${encodeURIComponent(product.name)}`;
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await sleep(2500);
 
@@ -74,29 +74,83 @@ async function scrapeMicroless(browser, product) {
                 return null;
             }
 
+            function priceFromCard(card) {
+                const attr = card.querySelector('[data-price], [data-product-price]')?.getAttribute('data-price')
+                    || card.querySelector('[data-price], [data-product-price]')?.getAttribute('data-product-price');
+                if (attr) {
+                    const n = Number.parseFloat(String(attr).replace(/,/g, '').replace(/[^\d.]/g, ''));
+                    if (Number.isFinite(n)) return Math.round(n);
+                }
+
+                const priceEl = card.querySelector(
+                    '[class*="price"], [class*="Price"], [itemprop="price"], meta[itemprop="price"]'
+                );
+                const content = priceEl?.getAttribute?.('content');
+                if (content) {
+                    const n = Number.parseFloat(String(content).replace(/,/g, '').replace(/[^\d.]/g, ''));
+                    if (Number.isFinite(n)) return Math.round(n);
+                }
+
+                return parsePrice(priceEl?.innerText || card.innerText || '');
+            }
+
+            function titleFromCard(card, anchor) {
+                return (
+                    anchor?.getAttribute('title') ||
+                    card.querySelector('[itemprop="name"]')?.textContent ||
+                    card.querySelector('[class*="title"], [class*="name"], h2, h3, h4')?.textContent ||
+                    anchor?.textContent ||
+                    card.querySelector('img[alt]')?.getAttribute('alt') ||
+                    ''
+                ).replace(/\s+/g, ' ').trim();
+            }
+
             function bestCardFor(anchor) {
-                return anchor.closest('.product, .product-item, .product-grid-item, li, article, [class*="product"]')
+                return anchor.closest(
+                    '[itemscope][itemtype*="Product"], .product, .product-item, .product-grid-item, ' +
+                    '.product-layout, .products-grid > *, li, article, [class*="product"]'
+                )
                     || anchor.parentElement;
             }
 
             const results = [];
-            const anchors = Array.from(document.querySelectorAll('a[href*="/product"], a[href*="/en/product"]'));
+            const cards = Array.from(document.querySelectorAll(
+                '[itemscope][itemtype*="Product"], .product, .product-item, .product-grid-item, ' +
+                '.product-layout, li[class*="product"], article[class*="product"], div[class*="product"]'
+            ));
+
+            for (const card of cards) {
+                const anchor = card.querySelector('a[href]');
+                const title = titleFromCard(card, anchor);
+                const price = priceFromCard(card);
+                if (!title || !price || price < 100 || price > 500000) continue;
+
+                results.push({
+                    source: 'Microless',
+                    title,
+                    price,
+                    url: anchor?.href || location.href,
+                    seller: 'Microless',
+                    inStock: !/out of stock|sold out|unavailable/i.test(card.innerText || ''),
+                    badges: (card.innerText || '').slice(0, 500)
+                });
+            }
+
+            const anchors = Array.from(document.querySelectorAll(
+                'a[href*="/product"], a[href*="/en/product"], a[href*="/products/"]'
+            ));
             for (const anchor of anchors) {
                 const card = bestCardFor(anchor);
                 if (!card) continue;
 
                 const text = card.innerText || anchor.innerText || '';
-                const title =
-                    anchor.getAttribute('title') ||
-                    anchor.innerText ||
-                    card.querySelector('[class*="title"], h2, h3, h4')?.innerText ||
-                    '';
-                const price = parsePrice(text);
+                const title = titleFromCard(card, anchor);
+                const price = priceFromCard(card) || parsePrice(text);
                 if (!price || price < 100 || price > 500000) continue;
 
                 results.push({
                     source: 'Microless',
-                    title: title.replace(/\s+/g, ' ').trim(),
+                    title,
                     price,
                     url: anchor.href,
                     seller: 'Microless',
@@ -154,10 +208,14 @@ async function scrapeAmazonAE(browser, product) {
                 const sponsored = /sponsored/i.test(text) || !!item.querySelector('.puis-sponsored-label-text');
                 if (sponsored) continue;
 
-                const titleEl = item.querySelector('h2 span, h2 a span, [data-cy="title-recipe"] span');
+                const titleEl = item.querySelector('[data-cy="title-recipe"], h2');
                 const linkEl = item.querySelector('h2 a, a.a-link-normal.s-no-outline');
                 const price = priceFromItem(item);
-                const title = titleEl?.textContent?.replace(/\s+/g, ' ').trim() || '';
+                const title = titleEl?.innerText?.replace(/\s+/g, ' ').trim()
+                    || Array.from(item.querySelectorAll('h2 span'))
+                        .map(span => span.textContent.trim())
+                        .filter(Boolean)
+                        .join(' ');
                 if (!title || !price || price < 100 || price > 500000) continue;
 
                 const ratingText = item.querySelector('.a-icon-alt')?.textContent || '';
