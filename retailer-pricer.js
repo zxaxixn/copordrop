@@ -40,6 +40,12 @@ async function launchRetailBrowser() {
 
 async function newRetailPage(browser) {
     const page = await browser.newPage();
+    await page.setRequestInterception(true);
+    page.on('request', request => {
+        const blocked = ['image', 'font', 'media'];
+        if (blocked.includes(request.resourceType())) return request.abort();
+        request.continue();
+    });
     await page.evaluateOnNewDocument(() => {
         Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
         Object.defineProperty(navigator, 'languages', { get: () => ['en-AE', 'en'] });
@@ -53,12 +59,40 @@ async function newRetailPage(browser) {
     return page;
 }
 
+function microlessQueryFor(product) {
+    const name = String(product.name || '').trim();
+    const lower = name.toLowerCase();
+
+    if (product.category === 'GPU') {
+        if (/\brtx\b|\bgtx\b/.test(lower)) {
+            return name.replace(/\bnvidia\b/i, 'GeForce').replace(/\bgeforce\s+geforce\b/i, 'GeForce') + ' graphics card';
+        }
+        if (/\brx\b/.test(lower)) {
+            return name.replace(/\bamd\b/i, 'Radeon').replace(/\bradeon\s+radeon\b/i, 'Radeon') + ' graphics card';
+        }
+        if (/\barc\b/.test(lower)) return `${name} graphics card`;
+        return `${name} graphics card`;
+    }
+
+    if (product.category === 'CPU') return `${name} processor`;
+    if (product.category === 'RAM') return `${name} memory kit`;
+    if (product.category === 'SSD') return `${name} internal SSD`;
+    if (product.category === 'PSU') return `${name} power supply`;
+    if (product.category === 'Motherboard') return `${name} motherboard`;
+    if (product.category === 'Cooler') return `${name} CPU cooler`;
+    if (product.category === 'Fan') return `${name} fan`;
+    if (product.category === 'Monitor') return `${name} monitor`;
+
+    return name;
+}
+
 async function scrapeMicroless(browser, product) {
     const page = await newRetailPage(browser);
     try {
-        const url = `https://uae.microless.com/search/?query=${encodeURIComponent(product.name)}`;
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-        await sleep(2500);
+        const query = microlessQueryFor(product);
+        const url = `https://uae.microless.com/search/?query=${encodeURIComponent(query)}`;
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 35000 });
+        await sleep(1400);
 
         const offers = await page.evaluate(() => {
             function parsePrice(text) {
@@ -171,8 +205,8 @@ async function scrapeAmazonAE(browser, product) {
     const page = await newRetailPage(browser);
     try {
         const url = `https://www.amazon.ae/s?k=${encodeURIComponent(product.name)}&i=electronics`;
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-        await sleep(2500);
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 35000 });
+        await sleep(1400);
 
         const captcha = await page.$('form[action*="validateCaptcha"], #captchacharacters');
         if (captcha) throw new Error('Amazon CAPTCHA detected');
@@ -253,16 +287,23 @@ async function getRetailOffers(browser, product) {
     const offers = [];
     const errors = [];
 
-    for (const source of sources) {
+    const results = await Promise.all(sources.map(async (source) => {
         try {
             const sourceOffers = await source.fn();
-            offers.push(...sourceOffers);
-            console.log(`      ${source.name}: ${sourceOffers.length} offer(s)`);
+            return { name: source.name, offers: sourceOffers, error: null };
         } catch (e) {
-            errors.push({ source: source.name, error: e.message });
-            console.log(`      ${source.name}: ${e.message}`);
+            return { name: source.name, offers: [], error: e.message };
         }
-        await sleep(900);
+    }));
+
+    for (const result of results) {
+        if (result.error) {
+            errors.push({ source: result.name, error: result.error });
+            console.log(`      ${result.name}: ${result.error}`);
+        } else {
+            offers.push(...result.offers);
+            console.log(`      ${result.name}: ${result.offers.length} offer(s)`);
+        }
     }
 
     return {
@@ -276,5 +317,6 @@ module.exports = {
     getRetailOffers,
     scrapeMicroless,
     scrapeAmazonAE,
+    microlessQueryFor,
     normalizePrice
 };
